@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chess Endgame Trainer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0f0f13;
+    --surface: #17171f;
+    --surface2: #1e1e2a;
+    --border: #2a2a3a;
+    --accent: #c8a96e;
+    --accent2: #7eb8c9;
+    --win: #4caf7d;
+    --loss: #e05c5c;
+    --draw: #9b9bc4;
+    --text: #e8e4da;
+    --muted: #6a6878;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(22px, 5vw, 32px);
+    color: var(--accent);
+    letter-spacing: 0.03em;
+  }
+  header p { color: var(--muted); font-size: 11px; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.1em; }
+
+  /* ── LAYOUT ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 300px 1fr 280px;
+    gap: 20px;
+    max-width: 1080px;
+    margin: 0 auto;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  /* ── PANEL ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .panel-title {
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Playfair Display', serif;
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .panel-body { padding: 16px; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    padding: 8px 14px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.1s;
+    white-space: nowrap;
+    letter-spacing: 0.03em;
+  }
+  .btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+
+  .btn-primary  { background: var(--accent); color: #111; border-color: var(--accent); font-weight: 700; }
+  .btn-secondary{ background: var(--surface2); color: var(--text); }
+  .btn-practice {
+    background: linear-gradient(135deg, #c8a96e, #e8c87a);
+    color: #111; border: none; font-size: 13px; font-weight: 700;
+    padding: 12px 22px; border-radius: 9px; width: 100%;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .btn-practice:hover { filter: brightness(1.08); }
+  .btn-upload  { background: rgba(126,184,201,0.12); color: var(--accent2); border-color: rgba(126,184,201,0.4); }
+  .btn-download{ background: rgba(76,175,125,0.10); color: var(--win); border-color: rgba(76,175,125,0.35); }
+  .btn-ghost   { background: transparent; color: var(--muted); border-color: transparent; padding: 3px 7px; font-size: 12px; }
+  .btn-ghost:hover { color: var(--loss); background: rgba(224,92,92,0.1); }
+  .btn-save-fen {
+    background: var(--accent2); color: #111; border: none;
+    font-weight: 700; width: 100%; padding: 10px;
+    border-radius: 7px; font-size: 12px; margin-top: 10px;
+    letter-spacing: 0.04em; font-family: 'JetBrains Mono', monospace;
+  }
+  .btn-save-fen:hover { filter: brightness(1.1); }
+
+  /* ── FEN INPUT ── */
+  .fen-input {
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    outline: none;
+    transition: border-color 0.2s;
+    resize: vertical;
+  }
+  .fen-input:focus { border-color: var(--accent2); }
+  .field-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
+
+  /* ── BOARD AREA ── */
+  #board-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  #board-container {
+    position: relative;
+    user-select: none;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+  }
+  canvas { display: block; cursor: grab; }
+  canvas.dragging { cursor: grabbing; }
+
+  #status {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
+    min-height: 20px;
+    text-align: center;
+  }
+  #active-badge {
+    font-size: 10px;
+    color: var(--muted);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 3px 10px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: none;
+  }
+
+  /* ── LIBRARY TABLE ── */
+  .lib-toolbar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    align-items: center;
+  }
+  .fc-count { font-size: 11px; color: var(--muted); margin-left: auto; }
+
+  .table-wrap {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    max-height: 380px;
+    overflow-y: auto;
+    overflow-x: auto;
+  }
+  .table-wrap::-webkit-scrollbar { width: 4px; }
+  .table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  thead th {
+    position: sticky; top: 0;
+    background: var(--surface2);
+    padding: 8px 10px;
+    text-align: left;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody tr { border-bottom: 1px solid rgba(42,42,58,0.5); transition: background 0.1s; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr.active-row { background: rgba(200,169,110,0.07); }
+  tbody td { padding: 7px 10px; vertical-align: middle; }
+
+  .fen-cell {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent2);
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .result-badge {
+    display: inline-block;
+    padding: 2px 7px; border-radius: 4px;
+    font-size: 10px; font-weight: 600;
+  }
+  .r-win  { background: rgba(76,175,125,0.15); color: var(--win); }
+  .r-loss { background: rgba(224,92,92,0.15);  color: var(--loss); }
+  .r-draw { background: rgba(155,155,196,0.15); color: var(--draw); }
+  .r-none { background: var(--surface2); color: var(--muted); }
+
+  .empty-state {
+    text-align: center; color: var(--muted);
+    padding: 36px 20px; font-size: 12px; line-height: 1.9;
+  }
+  .empty-state .ico { font-size: 30px; margin-bottom: 8px; }
+
+  /* ── RESULT OVERLAY ── */
+  #result-overlay {
+    display: none;
+    position: absolute; inset: 0;
+    background: rgba(10,10,18,0.84);
+    backdrop-filter: blur(3px);
+    align-items: center; justify-content: center; flex-direction: column;
+    gap: 14px; z-index: 10; border-radius: 6px;
+  }
+  #result-overlay.show { display: flex; }
+  .ov-icon { font-size: 52px; }
+  .ov-title { font-family: 'Playfair Display', serif; font-size: 28px; color: var(--accent); }
+  .ov-sub   { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; }
+  .ov-btns  { display: flex; gap: 10px; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 20px;
+    font-size: 12px; color: var(--text);
+    transition: transform 0.3s ease; z-index: 999; white-space: nowrap;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  #create-error { color: var(--loss); font-size: 11px; min-height: 16px; margin-top: 6px; }
+
+  .hint-box {
+    margin-top: 14px;
+    padding: 10px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+  .hint-box span { color: var(--accent2); word-break: break-all; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>♟ Chess Endgame Trainer</h1>
+  <p>Build · Practice · Improve</p>
+</header>
+
+<div class="layout">
+
+  <!-- ── LEFT: LIBRARY ── -->
+  <div class="panel">
+    <div class="panel-title">
+      📚 Endgame Library
+    </div>
+    <div class="panel-body">
+
+      <button class="btn btn-practice" id="practiceBtn">🎯 Practice Random</button>
+
+      <div style="height:12px"></div>
+
+      <div class="lib-toolbar">
+        <button class="btn btn-upload"   id="uploadBtn">📂 Upload CSV</button>
+        <button class="btn btn-download" id="downloadBtn">💾 Download CSV</button>
+        <input type="file" id="csvFileInput" accept=".csv" style="display:none">
+        <span class="fc-count" id="fcCount">0 positions</span>
+      </div>
+
+      <div class="table-wrap" id="tableWrap">
+        <div class="empty-state" id="emptyState">
+          <div class="ico">♟</div>
+          No positions yet.<br>Create a flashcard<br>or upload a CSV.
+        </div>
+        <table id="fcTable" style="display:none">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Position</th>
+              <th>Result</th>
+              <th>Played</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="fcTbody"></tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── CENTER: BOARD ── -->
+  <div id="board-wrap">
+    <div id="board-container">
+      <canvas id="board"></canvas>
+      <div id="result-overlay">
+        <div class="ov-icon" id="ovIcon"></div>
+        <div class="ov-title" id="ovTitle"></div>
+        <div class="ov-sub"   id="ovSub"></div>
+        <div class="ov-btns">
+          <button class="btn btn-secondary" id="ovRetry">↺ Retry</button>
+          <button class="btn btn-primary"   id="ovNext">Next →</button>
+        </div>
+      </div>
+    </div>
+    <div id="status">Create a flashcard or practice a saved endgame</div>
+    <div id="active-badge"></div>
+  </div>
+
+  <!-- ── RIGHT: CREATE FLASHCARD ── -->
+  <div class="panel">
+    <div class="panel-title">✏ Create Flashcard</div>
+    <div class="panel-body">
+      <div class="field-label">FEN Position</div>
+      <textarea class="fen-input" id="fenInput" rows="4"
+        placeholder="Paste FEN string here…&#10;e.g. 8/8/8/4k3/8/8/4K3/4R3 w - - 0 1"></textarea>
+      <div id="create-error"></div>
+      <button class="btn-save-fen" id="saveFlashcardBtn">＋ Save Flashcard</button>
+
+      <div class="hint-box">
+        <strong style="color:var(--text)">CSV Format</strong><br>
+        id, fen, last_result, last_played<br>
+        <span>abc1,"8/8/... w - - 0 1",win,2025-05-23 10:30</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<!-- ══ SCRIPTS ══════════════════════════════════════════════════════════════ -->
+<script>
+// ── PIECE SVGs (standard Merida tournament) ──────────────────────────────────
+const PIECE_SVG = {
+  wK:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22.5 11.63V6M20 8h5" stroke-linejoin="miter"/><path d="M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5" fill="#fff" stroke-linecap="butt" stroke-linejoin="miter"/><path d="M11.5 37c5.5 3.5 15.5 3.5 21 0v-7s9-4.5 6-10.5c-4-6.5-13.5-3.5-16 4V17s-5.5-11.5-12 .5C8 23 16 27.5 16 30v7" fill="#fff"/><path d="M11.5 30c5.5-3 15.5-3 21 0M11.5 33.5c5.5-3 15.5-3 21 0M11.5 37c5.5-3 15.5-3 21 0"/></g></svg>`,
+  wQ:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="#fff" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM24.5 7.5a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM41 12a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM16 8.5a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM33 8.5a2 2 0 1 1 4 0 2 2 0 0 1-4 0z"/><path d="M9 26c8.5-8.5 15.5-4 16.5 2 1-7 8.5-10.5 16.5-2l-1 2c-8-8-12-3.5-12.5 4l-.5 2.5-.5-2.5C27 24.5 23 20 15 28z"/><path d="M9 26c0 2 1.5 2 2.5 4 1 1.5 1 1 .5 3.5-1.5 1-1.5 2.5-1.5 2.5-1.5 1.5.5 2.5.5 2.5 6.5 1 16.5 1 23 0 0 0 1.5-1 0-2.5 0 0 .5-1.5-1-2.5-.5-2.5-.5-2 .5-3.5 1-2 2.5-2 2.5-4-8.5 1.5-18.5 1.5-27 0z"/><path d="M11.5 30c3.5-1 18.5-1 22 0M12 33.5c4-1.5 17-1.5 21 0" fill="none"/></g></svg>`,
+  wR:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="#fff" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 39h27v-3H9zM12 36v-4h21v4zM11 14V9h4v2h5V9h5v2h5V9h4v5" stroke-linecap="butt"/><path d="M34 14l-3 3H14l-3-3"/><path d="M31 17v12.5H14V17" stroke-linecap="butt" stroke-linejoin="miter"/><path d="M31 29.5l1.5 2.5h-20l1.5-2.5"/><path d="M11 14h23" fill="none" stroke-linejoin="miter"/></g></svg>`,
+  wB:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><g fill="#fff" stroke-linecap="butt"><path d="M9 36c3.39-.97 10.11.43 13.5-2 3.39 2.43 10.11 1.03 13.5 2 0 0 1.65.54 3 2-.68.97-1.65.99-3 .5-3.39-.97-10.11.46-13.5-1-3.39 1.46-10.11.03-13.5 1-1.354.49-2.323.47-3-.5 1.354-1.94 3-2 3-2z"/><path d="M15 32c2.5 2.5 12.5 2.5 15 0 .5-1.5 0-2 0-2 0-2.5-2.5-4-2.5-4 5.5-1.5 6-11.5-5-15.5-11 4-10.5 14-5 15.5 0 0-2.5 1.5-2.5 4 0 0-.5.5 0 2z"/><path d="M25 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/></g><path d="M17.5 26h10M15 30h15m-7.5-14.5v5M20 18h5" stroke-linejoin="miter"/></g></svg>`,
+  wN:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10c10.5 1 16.5 8 16 29H15c0-9 10-6.5 8-21" fill="#fff"/><path d="M24 18c.38 5.12-3 7-3 7 4 0 8.5 4.5 8.5 4.5l-4.5 2.5 1.5 4.5h-7.5l1.5-4.5L16 29.5s4.5-4.5 8.5-4.5c0 0-3.38-1.88-3-7" fill="#fff"/><path d="M9.5 25.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0zm5.43-9.75a.5 1.5 30 1 1-.86-.5.5 1.5 30 0 1 .86.5z" fill="#000" stroke="#000"/><path d="M24.55 10.4l-.45 1.45.5.15c3.15 1 5.65 2.49 6.9 4.05 1.25 1.56 1.65 3.1 1.2 4.6l-.3.9.4.35c1.7 1.44 2.5 3.23 2.27 5.12-.23 1.89-1.45 3.82-3.69 5.4l-.56.4.37.6c.44.73.65 1.48.65 2.14 0 .66-.17 1.25-.51 1.75-.34.5-.87.93-1.64 1.29-.77.36-1.78.6-3.03.72l.1 1.5a17.8 17.8 0 0 0 3.35-.8c1-.37 1.84-.9 2.45-1.62.61-.72.9-1.61.9-2.59 0-.56-.1-1.13-.32-1.69 2.37-1.75 3.7-3.92 3.95-6.07.25-2.15-.53-4.23-2.25-5.97.37-1.6-.06-3.27-1.37-4.85-1.32-1.58-3.56-2.97-6.5-3.94z" fill="#000" stroke="none"/></g></svg>`,
+  wP:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" fill="#fff" stroke="#000" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+  bK:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22.5 11.63V6M20 8h5" stroke-linejoin="miter"/><path d="M22.5 25s4.5-7.5 3-10.5c0 0-1-2.5-3-2.5s-3 2.5-3 2.5c-1.5 3 3 10.5 3 10.5" fill="#000" stroke-linecap="butt" stroke-linejoin="miter"/><path d="M11.5 37c5.5 3.5 15.5 3.5 21 0v-7s9-4.5 6-10.5c-4-6.5-13.5-3.5-16 4V17s-5.5-11.5-12 .5C8 23 16 27.5 16 30v7" fill="#000"/><path d="M11.5 30c5.5-3 15.5-3 21 0M11.5 33.5c5.5-3 15.5-3 21 0M11.5 37c5.5-3 15.5-3 21 0" stroke="#fff"/></g></svg>`,
+  bQ:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="#000" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM24.5 7.5a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM41 12a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM16 8.5a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM33 8.5a2 2 0 1 1 4 0 2 2 0 0 1-4 0z"/><path d="M9 26c8.5-8.5 15.5-4 16.5 2 1-7 8.5-10.5 16.5-2l-1 2c-8-8-12-3.5-12.5 4l-.5 2.5-.5-2.5C27 24.5 23 20 15 28z"/><path d="M9 26c0 2 1.5 2 2.5 4 1 1.5 1 1 .5 3.5-1.5 1-1.5 2.5-1.5 2.5-1.5 1.5.5 2.5.5 2.5 6.5 1 16.5 1 23 0 0 0 1.5-1 0-2.5 0 0 .5-1.5-1-2.5-.5-2.5-.5-2 .5-3.5 1-2 2.5-2 2.5-4-8.5 1.5-18.5 1.5-27 0z"/><path d="M11.5 30c3.5-1 18.5-1 22 0M12 33.5c4-1.5 17-1.5 21 0" fill="none" stroke="#fff"/></g></svg>`,
+  bR:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="#000" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 39h27v-3H9zM12.5 32l1.5-2.5h17l1.5 2.5zM12 36v-4h21v4zM14 29.5v-13h17v13zM14 16.5L11 14h23l-3 2.5zM11 14V9h4v2h5V9h5v2h5V9h4v5z" stroke-linecap="butt"/><path d="M12 35.5h21M13 31.5h19M14 29.5h17M14 16.5h17M11 14h23" fill="none" stroke="#fff" stroke-width="1" stroke-linejoin="miter"/></g></svg>`,
+  bB:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><g fill="#000" stroke-linecap="butt"><path d="M9 36c3.39-.97 10.11.43 13.5-2 3.39 2.43 10.11 1.03 13.5 2 0 0 1.65.54 3 2-.68.97-1.65.99-3 .5-3.39-.97-10.11.46-13.5-1-3.39 1.46-10.11.03-13.5 1-1.354.49-2.323.47-3-.5 1.354-1.94 3-2 3-2z"/><path d="M15 32c2.5 2.5 12.5 2.5 15 0 .5-1.5 0-2 0-2 0-2.5-2.5-4-2.5-4 5.5-1.5 6-11.5-5-15.5-11 4-10.5 14-5 15.5 0 0-2.5 1.5-2.5 4 0 0-.5.5 0 2z"/><path d="M25 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z"/></g><path d="M17.5 26h10M15 30h15m-7.5-14.5v5M20 18h5" stroke="#fff" stroke-linejoin="miter"/></g></svg>`,
+  bN:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><g fill="none" fill-rule="evenodd" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10c10.5 1 16.5 8 16 29H15c0-9 10-6.5 8-21" fill="#000"/><path d="M24 18c.38 5.12-3 7-3 7 4 0 8.5 4.5 8.5 4.5l-4.5 2.5 1.5 4.5h-7.5l1.5-4.5L16 29.5s4.5-4.5 8.5-4.5c0 0-3.38-1.88-3-7" fill="#000"/><path d="M9.5 25.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0zm5.43-9.75a.5 1.5 30 1 1-.86-.5.5 1.5 30 0 1 .86.5z" fill="#fff" stroke="#fff"/><path d="M24.55 10.4l-.45 1.45.5.15c3.15 1 5.65 2.49 6.9 4.05 1.25 1.56 1.65 3.1 1.2 4.6l-.3.9.4.35c1.7 1.44 2.5 3.23 2.27 5.12-.23 1.89-1.45 3.82-3.69 5.4l-.56.4.37.6c.44.73.65 1.48.65 2.14 0 .66-.17 1.25-.51 1.75-.34.5-.87.93-1.64 1.29-.77.36-1.78.6-3.03.72l.1 1.5a17.8 17.8 0 0 0 3.35-.8c1-.37 1.84-.9 2.45-1.62.61-.72.9-1.61.9-2.59 0-.56-.1-1.13-.32-1.69 2.37-1.75 3.7-3.92 3.95-6.07.25-2.15-.53-4.23-2.25-5.97.37-1.6-.06-3.27-1.37-4.85-1.32-1.58-3.56-2.97-6.5-3.94z" fill="#fff" stroke="none"/></g></svg>`,
+  bP:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 45 45"><path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" fill="#000" stroke="#000" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+};
+
+// ── CHESS.JS ─────────────────────────────────────────────────────────────────
+const CHESS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js';
+let assetsReady = false;
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    if (window.Chess) { res(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+// ── PIECE IMAGES ─────────────────────────────────────────────────────────────
+const pieceImages = {};
+function loadPieceImages() {
+  return Promise.all(Object.entries(PIECE_SVG).map(([k, svg]) => new Promise(res => {
+    const img = new Image();
+    img.src = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+    img.onload = () => { pieceImages[k] = img; res(); };
+    img.onerror = res;
+  })));
+}
+async function ensureAssets() {
+  if (assetsReady) return;
+  await Promise.all([loadScript(CHESS_CDN), loadPieceImages()]);
+  assetsReady = true;
+}
+
+// ── BOARD ─────────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('board');
+const ctx    = canvas.getContext('2d');
+const SQ     = Math.min(Math.floor((Math.min(window.innerWidth, 500) - 40) / 8), 64);
+const SIZE   = SQ * 8;
+canvas.width  = SIZE;
+canvas.height = SIZE;
+
+const LIGHT = '#f0d9b5', DARK = '#b58863', SEL = 'rgba(20,85,30,0.5)';
+
+let chess = null, playerColor = 'w', thinking = false, gameOver = false;
+let startFen = '', dragging = null, selectedSquare = null, currentCardId = null;
+
+function sqToColRow(sq) {
+  const file = sq.charCodeAt(0) - 97, rank = parseInt(sq[1]) - 1;
+  return {
+    col: playerColor === 'w' ? file : 7 - file,
+    row: playerColor === 'w' ? 7 - rank : rank
+  };
+}
+function xyToSq(px, py) {
+  const col = Math.floor(px / SQ), row = Math.floor(py / SQ);
+  if (col < 0 || col > 7 || row < 0 || row > 7) return null;
+  const file = playerColor === 'w' ? col : 7 - col;
+  const rank = playerColor === 'w' ? 7 - row : row;
+  return String.fromCharCode(97 + file) + (rank + 1);
+}
+function getPos(e) {
+  const r  = canvas.getBoundingClientRect();
+  const sx = SIZE / r.width, sy = SIZE / r.height;
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const cy = e.touches ? e.touches[0].clientY : e.clientY;
+  return { px: (cx - r.left) * sx, py: (cy - r.top) * sy };
+}
+
+// ── DRAW ─────────────────────────────────────────────────────────────────────
+function draw() {
+  if (!chess) return;
+  ctx.clearRect(0, 0, SIZE, SIZE);
+  const board = chess.board();
+
+  for (let r = 0; r < 8; r++)
+    for (let c = 0; c < 8; c++) {
+      ctx.fillStyle = (r + c) % 2 === 0 ? LIGHT : DARK;
+      ctx.fillRect(c * SQ, r * SQ, SQ, SQ);
+    }
+
+  // rank / file labels
+  ctx.font = `bold ${Math.max(9, Math.floor(SQ * 0.18))}px JetBrains Mono,monospace`;
+  for (let i = 0; i < 8; i++) {
+    const rLabel = (playerColor === 'w' ? 8 - i : i + 1).toString();
+    const fLabel = String.fromCharCode(playerColor === 'w' ? 97 + i : 97 + 7 - i);
+    ctx.fillStyle = i % 2 === 0 ? DARK : LIGHT;
+    ctx.fillText(rLabel, 3, i * SQ + 14);
+    ctx.fillStyle = i % 2 === 0 ? LIGHT : DARK;
+    ctx.fillText(fLabel, i * SQ + SQ - 11, SIZE - 3);
+  }
+
+  if (selectedSquare) {
+    const { col, row } = sqToColRow(selectedSquare);
+    ctx.fillStyle = SEL;
+    ctx.fillRect(col * SQ, row * SQ, SQ, SQ);
+    chess.moves({ square: selectedSquare, verbose: true }).forEach(m => {
+      const { col: mc, row: mr } = sqToColRow(m.to);
+      ctx.fillStyle = SEL;
+      ctx.beginPath();
+      ctx.arc(mc * SQ + SQ / 2, mr * SQ + SQ / 2, SQ / 5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  for (let r = 0; r < 8; r++)
+    for (let c = 0; c < 8; c++) {
+      const fi = playerColor === 'w' ? c : 7 - c;
+      const ri = playerColor === 'w' ? 7 - r : r;
+      const sq = String.fromCharCode(97 + fi) + (ri + 1);
+      if (dragging && dragging.square === sq) continue;
+      const piece = board[7 - ri][fi];
+      if (!piece) continue;
+      const img = pieceImages[piece.color + piece.type.toUpperCase()];
+      if (img) ctx.drawImage(img, c * SQ + 2, r * SQ + 2, SQ - 4, SQ - 4);
+    }
+
+  if (dragging) {
+    const img = pieceImages[dragging.key];
+    if (img) ctx.drawImage(img, dragging.x - SQ / 2, dragging.y - SQ / 2, SQ, SQ);
+  }
+}
+
+// ── ENGINE ────────────────────────────────────────────────────────────────────
+const ENGINE_URL = 'https://cdn.jsdelivr.net/npm/stockfish@16.0.0/src/stockfish-nnue-16-single.js';
+let engine = null;
+let engineReady = false;
+let engineInitializing = null;
+let engineReadyResolver = null;
+let engineMoveResolver = null;
+let engineSearchActive = false;
+
+async function createEngineWorker() {
+  const tryWorker = url => new Promise((resolve, reject) => {
+    try {
+      const w = new Worker(url);
+      w.onerror = reject;
+      w.onmessage = handleEngineMessage;
+      resolve(w);
+    } catch (err) {
+      reject(err);
+    }
+  });
+
+  try {
+    return await tryWorker(ENGINE_URL);
+  } catch (_err) {
+    const response = await fetch(ENGINE_URL);
+    if (!response.ok) throw new Error('Failed to fetch Stockfish worker');
+    let script = await response.text();
+    const wasmUrl = ENGINE_URL.replace(/\/[^/]+$/, '/stockfish-nnue-16-single.wasm');
+    script = script.replace(/stockfish-nnue-16-single\.wasm/g, wasmUrl);
+    const blob = new Blob([script], { type: 'application/javascript' });
+    const blobUrl = URL.createObjectURL(blob);
+    return await tryWorker(blobUrl);
+  }
+}
+
+function initEngine() {
+  if (engineReady) return Promise.resolve();
+  if (engineInitializing) return engineInitializing;
+  engineInitializing = new Promise((resolve, reject) => {
+    engineReadyResolver = { resolve, reject };
+  });
+  createEngineWorker()
+    .then(w => {
+      engine = w;
+      engine.postMessage('uci');
+    })
+    .catch(err => {
+      console.error('Engine initialization failed', err);
+      if (engineReadyResolver) {
+        engineReadyResolver.reject(err);
+        engineReadyResolver = null;
+      }
+    });
+  return engineInitializing;
+}
+
+function handleEngineMessage(event) {
+  const lines = event.data?.toString?.().split('\n') || [];
+  for (const line of lines) {
+    const data = line.trim();
+    if (!data) continue;
+    if (data === 'uciok') {
+      engine.postMessage('setoption name Threads value 2');
+      engine.postMessage('setoption name Hash value 64');
+      engine.postMessage('setoption name UCI_LimitStrength value true');
+      engine.postMessage('setoption name UCI_Elo value 2000');
+      engine.postMessage('isready');
+      continue;
+    }
+    if (data === 'readyok') {
+      engineReady = true;
+      if (engineReadyResolver) {
+        engineReadyResolver.resolve();
+        engineReadyResolver = null;
+      }
+      continue;
+    }
+    if (!engineSearchActive) continue;
+    if (data.startsWith('bestmove')) {
+      const bestmove = data.split(' ')[1];
+      engineSearchActive = false;
+      thinking = false;
+      if (!engineMoveResolver) return;
+      const resolve = engineMoveResolver;
+      engineMoveResolver = null;
+      resolve(bestmove && bestmove !== '(none)' ? bestmove : null);
+    }
+  }
+}
+
+async function doEngineMove() {
+  if (gameOver || thinking || engineSearchActive) return;
+  thinking = true;
+  engineSearchActive = true;
+  setStatus('⟳ Engine thinking…');
+  try {
+    await initEngine();
+    if (gameOver || chess.game_over()) {
+      engineSearchActive = false;
+      thinking = false;
+      if (chess.game_over()) checkEnd();
+      return;
+    }
+    const fen = chess.fen();
+    engine.postMessage('position fen ' + fen);
+    engine.postMessage('go depth 12');
+    const bestmove = await new Promise((resolve, reject) => {
+      engineMoveResolver = resolve;
+    });
+    if (!bestmove || gameOver || chess.game_over()) {
+      engineSearchActive = false;
+      thinking = false;
+      if (chess.game_over()) checkEnd();
+      return;
+    }
+    const from = bestmove.slice(0, 2);
+    const to = bestmove.slice(2, 4);
+    const promotion = bestmove.length > 4 ? bestmove[4] : 'q';
+    const move = chess.move({ from, to, promotion });
+    if (move) draw();
+    checkEnd();
+  } catch (err) {
+    console.error('Stockfish error', err);
+    thinking = false;
+    engineSearchActive = false;
+    setStatus('Engine unavailable');
+  }
+}
+
+// ── GAME OVER ─────────────────────────────────────────────────────────────────
+function checkEnd() {
+  if (chess.in_checkmate()) {
+    showResult(chess.turn() !== playerColor ? 'win' : 'loss');
+  } else if (chess.in_draw() || chess.in_stalemate() || chess.insufficient_material()) {
+    showResult('draw');
+  } else {
+    setStatus(`▶ Your turn (${playerColor === 'w' ? 'White' : 'Black'})`);
+  }
+}
+
+function showResult(result) {
+  gameOver = true;
+  const ICONS  = { win:'🏆', loss:'💀', draw:'🤝' };
+  const TITLES = { win:'You Win!', loss:'You Lose', draw:'Draw' };
+  const SUBS   = { win:'Excellent technique!', loss:"Keep going — you'll get it", draw:'Hard-fought draw' };
+  document.getElementById('ovIcon').textContent  = ICONS[result];
+  document.getElementById('ovTitle').textContent = TITLES[result];
+  document.getElementById('ovSub').textContent   = SUBS[result];
+  document.getElementById('result-overlay').classList.add('show');
+
+  if (currentCardId) {
+    saveResult(currentCardId, result);
+    renderTable(currentCardId);
+  }
+}
+function setStatus(t) { document.getElementById('status').textContent = t; }
+
+// ── DRAG & DROP ───────────────────────────────────────────────────────────────
+canvas.addEventListener('mousedown', startDrag);
+canvas.addEventListener('touchstart', e => { e.preventDefault(); startDrag(e); }, { passive: false });
+function startDrag(e) {
+  if (thinking || gameOver) return;
+  const { px, py } = getPos(e);
+  const sq = xyToSq(px, py);
+  if (!sq) return;
+  const fi    = sq.charCodeAt(0) - 97, ri = parseInt(sq[1]) - 1;
+  const piece = chess.board()[7 - ri][fi];
+  if (!piece || piece.color !== playerColor) return;
+  dragging = { square: sq, key: piece.color + piece.type.toUpperCase(), x: px, y: py };
+  selectedSquare = sq;
+  canvas.classList.add('dragging');
+  draw();
+}
+window.addEventListener('mousemove', moveDrag);
+window.addEventListener('touchmove', e => { e.preventDefault(); moveDrag(e); }, { passive: false });
+function moveDrag(e) {
+  if (!dragging) return;
+  const { px, py } = getPos(e);
+  dragging.x = px; dragging.y = py; draw();
+}
+window.addEventListener('mouseup', endDrag);
+window.addEventListener('touchend', e => { e.preventDefault(); endDrag(e); }, { passive: false });
+function endDrag(e) {
+  if (!dragging) return;
+  canvas.classList.remove('dragging');
+  const r = canvas.getBoundingClientRect();
+  const src = e.changedTouches ? e.changedTouches[0] : e;
+  const px = (src.clientX - r.left) * (SIZE / r.width);
+  const py = (src.clientY - r.top)  * (SIZE / r.height);
+  const toSq = xyToSq(px, py), fromSq = dragging.square;
+  dragging = null;
+  if (toSq && toSq !== fromSq) {
+    const move = chess.move({ from: fromSq, to: toSq, promotion: 'q' });
+    if (move) {
+      selectedSquare = null; draw();
+      if (!chess.game_over()) doEngineMove(); else checkEnd();
+      return;
+    }
+  }
+  selectedSquare = (toSq === fromSq && selectedSquare !== fromSq) ? fromSq : null;
+  draw();
+}
+
+// ── LOAD POSITION ─────────────────────────────────────────────────────────────
+async function loadPosition(fen, cardId = null) {
+  await ensureAssets();
+  const g = new Chess();
+  if (!g.load(fen)) return false;
+  chess = g; startFen = fen; playerColor = chess.turn();
+  gameOver = false; thinking = false; selectedSquare = null; dragging = null;
+  currentCardId = cardId;
+
+  const badge = document.getElementById('active-badge');
+  if (cardId) {
+    badge.style.display = 'block';
+    badge.textContent = '♟ ' + fen.split(' ')[0];
+  } else {
+    badge.style.display = 'none';
+  }
+  document.getElementById('result-overlay').classList.remove('show');
+  draw(); checkEnd();
+  return true;
+}
+
+// ── OVERLAY BUTTONS ───────────────────────────────────────────────────────────
+document.getElementById('ovRetry').addEventListener('click', () => {
+  if (!startFen) return;
+  chess.load(startFen);
+  gameOver = false; thinking = false; selectedSquare = null; dragging = null;
+  document.getElementById('result-overlay').classList.remove('show');
+  draw(); checkEnd();
+});
+document.getElementById('ovNext').addEventListener('click', practiceRandom);
+
+// ── LOCAL STORAGE ─────────────────────────────────────────────────────────────
+const LS_KEY = 'chessEndgameFlashcards';
+function getCards()   { try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { return []; } }
+function setCards(c)  { localStorage.setItem(LS_KEY, JSON.stringify(c)); }
+function genId()      { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function nowStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function saveResult(id, result) {
+  const cards = getCards();
+  const c = cards.find(x => x.id === id);
+  if (!c) return;
+  c.last_result = result;
+  c.last_played = nowStr();
+  setCards(cards);
+  showToast(`Result saved: ${result}`);
+}
+
+function deleteCard(id) {
+  setCards(getCards().filter(c => c.id !== id));
+  renderTable();
+}
+window.deleteCard = deleteCard;
+
+// ── CREATE FLASHCARD ──────────────────────────────────────────────────────────
+document.getElementById('saveFlashcardBtn').addEventListener('click', async () => {
+  const errEl = document.getElementById('create-error');
+  const fen   = document.getElementById('fenInput').value.trim();
+  errEl.textContent = '';
+
+  if (!fen) { errEl.textContent = '✗ Please enter a FEN string.'; return; }
+
+  await ensureAssets();
+  const test = new Chess();
+  if (!test.load(fen)) { errEl.textContent = '✗ Invalid FEN — check the string and try again.'; return; }
+
+  const cards = getCards();
+  if (cards.some(c => c.fen === fen)) { errEl.textContent = '✗ This position is already in your library.'; return; }
+
+  const newCard = { id: genId(), fen, last_result: '—', last_played: '—' };
+  cards.push(newCard);
+  setCards(cards);
+  renderTable(newCard.id);
+  document.getElementById('fenInput').value = '';
+  showToast('Flashcard saved to library!');
+});
+
+// ── PRACTICE RANDOM ───────────────────────────────────────────────────────────
+async function practiceRandom() {
+  const cards = getCards();
+  if (!cards.length) { showToast('No positions yet — create a flashcard first!'); return; }
+  const card = cards[Math.floor(Math.random() * cards.length)];
+  await loadPosition(card.fen, card.id);
+  renderTable(card.id);
+  setTimeout(() => {
+    const row = document.getElementById('row-' + card.id);
+    if (row) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 100);
+}
+document.getElementById('practiceBtn').addEventListener('click', practiceRandom);
+
+// also allow clicking ▶ on a specific row
+async function practiceCard(id) {
+  const card = getCards().find(c => c.id === id);
+  if (!card) return;
+  await loadPosition(card.fen, card.id);
+  renderTable(id);
+}
+window.practiceCard = practiceCard;
+
+// ── RENDER TABLE ──────────────────────────────────────────────────────────────
+function renderTable(activeId = null) {
+  const cards   = getCards();
+  const emptyEl = document.getElementById('emptyState');
+  const tableEl = document.getElementById('fcTable');
+  const tbody   = document.getElementById('fcTbody');
+  document.getElementById('fcCount').textContent = `${cards.length} position${cards.length !== 1 ? 's' : ''}`;
+
+  if (!cards.length) {
+    emptyEl.style.display = 'block'; tableEl.style.display = 'none'; return;
+  }
+  emptyEl.style.display = 'none'; tableEl.style.display = 'table';
+
+  tbody.innerHTML = cards.map((c, i) => `
+    <tr id="row-${c.id}" class="${activeId === c.id ? 'active-row' : ''}">
+      <td style="color:var(--muted)">${i + 1}</td>
+      <td class="fen-cell" title="${c.fen}">${c.fen.split(' ')[0]}</td>
+      <td>${badge(c.last_result)}</td>
+      <td style="color:var(--muted);font-size:10px;white-space:nowrap">${c.last_played}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost" title="Practice" onclick="practiceCard('${c.id}')">▶</button>
+        <button class="btn btn-ghost" title="Delete"   onclick="deleteCard('${c.id}')">✕</button>
+      </td>
+    </tr>`).join('');
+}
+
+function badge(r) {
+  if (!r || r === '—') return `<span class="result-badge r-none">—</span>`;
+  const cls = { win:'r-win', loss:'r-loss', draw:'r-draw' }[r] || 'r-none';
+  return `<span class="result-badge ${cls}">${r}</span>`;
+}
+
+// ── CSV UPLOAD ────────────────────────────────────────────────────────────────
+document.getElementById('uploadBtn').addEventListener('click', () => document.getElementById('csvFileInput').click());
+document.getElementById('csvFileInput').addEventListener('change', function () {
+  if (!this.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => { importCSV(e.target.result); this.value = ''; };
+  reader.readAsText(this.files[0]);
+});
+
+function parseCSVLine(line) {
+  const out = []; let cur = '', inQ = false;
+  for (const ch of line) {
+    if (ch === '"') { inQ = !inQ; }
+    else if (ch === ',' && !inQ) { out.push(cur.trim()); cur = ''; }
+    else { cur += ch; }
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+function importCSV(text) {
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (lines.length < 2) { showToast('CSV has no data rows'); return; }
+  const header  = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/\s+/g,'_'));
+  const iId     = header.indexOf('id');
+  const iFen    = header.indexOf('fen');
+  const iResult = header.indexOf('last_result');
+  const iPlayed = header.indexOf('last_played');
+  if (iFen < 0) { showToast('CSV must have a "fen" column'); return; }
+
+  const existing = getCards();
+  const byId = Object.fromEntries(existing.map(c => [c.id, c]));
+  let added = 0, updated = 0;
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCSVLine(lines[i]);
+    const fen  = cols[iFen] || ''; if (!fen) continue;
+    const id   = (iId >= 0 && cols[iId]) ? cols[iId] : genId();
+    const last_result = (iResult >= 0 && cols[iResult]) ? cols[iResult] : '—';
+    const last_played = (iPlayed >= 0 && cols[iPlayed]) ? cols[iPlayed] : '—';
+    if (byId[id]) { byId[id] = { ...byId[id], fen, last_result, last_played }; updated++; }
+    else          { byId[id] = { id, fen, last_result, last_played }; added++; }
+  }
+  setCards(Object.values(byId));
+  renderTable();
+  showToast(`Imported: ${added} added, ${updated} updated`);
+}
+
+// ── CSV DOWNLOAD ──────────────────────────────────────────────────────────────
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  const cards = getCards();
+  if (!cards.length) { showToast('No positions to download'); return; }
+  const csv = 'id,fen,last_result,last_played\n' +
+    cards.map(c => `${c.id},"${c.fen}",${c.last_result},${c.last_played}`).join('\n');
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })),
+    download: `chess-endgames-${new Date().toISOString().slice(0,10)}.csv`
+  });
+  a.click();
+  showToast(`Downloaded ${cards.length} positions`);
+});
+
+// ── TOAST ─────────────────────────────────────────────────────────────────────
+let _tt;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(_tt); _tt = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+renderTable();
+</script>
+</body>
+</html>
