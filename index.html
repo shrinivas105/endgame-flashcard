@@ -45,39 +45,25 @@
   header p { color: var(--muted); font-size: 11px; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.1em; }
 
   /* ── LAYOUT ── */
+  /* Vertical stacked layout for all screen sizes */
   .layout {
-    display: grid;
-    grid-template-columns: 300px 1fr 280px;
+    display: flex;
+    flex-direction: column;
     gap: 20px;
     max-width: 1080px;
     margin: 0 auto;
-    align-items: start;
+    align-items: stretch;
+    padding: 0 12px;
   }
-  @media (max-width: 860px) {
-    /* Switch to a vertical, scrollable stack on small screens */
-    .layout {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 0 8px;
-      align-items: stretch;
-    }
-    /* Mobile order: library, board, create */
-    .layout > .panel:first-of-type { order: 1; }
-    .layout > #board-wrap           { order: 2; }
-    .layout > .panel:last-of-type  { order: 3; }
-    /* Ensure full width stacking */
-    .layout > .panel,
-    .layout > #board-wrap {
-      width: 100%;
-      max-width: 100%;
-    }
-    /* Make board and library table comfortably scrollable on narrow screens */
-    #board-container { width: 100%; overflow: auto; }
-    .table-wrap { max-height: 280px; }
+
+  /* Ensure full-width panels and scrollable areas */
+  .layout > .panel,
+  .layout > #board-wrap {
+    width: 100%;
+    max-width: 100%;
   }
+  #board-container { width: 100%; overflow: auto; }
+  .table-wrap { max-height: 380px; }
 
   /* ── PANEL ── */
   .panel {
