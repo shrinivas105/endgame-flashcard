@@ -54,14 +54,29 @@
     align-items: start;
   }
   @media (max-width: 860px) {
-    .layout { grid-template-columns: 1fr; }
-    /* Mobile order: show library, then Create Flashcard, then Board */
+    /* Switch to a vertical, scrollable stack on small screens */
+    .layout {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 8px;
+      align-items: stretch;
+    }
+    /* Mobile order: library, board, create */
     .layout > .panel:first-of-type { order: 1; }
-    .layout > .panel:last-of-type  { order: 2; }
-    .layout > #board-wrap           { order: 3; }
+    .layout > #board-wrap           { order: 2; }
+    .layout > .panel:last-of-type  { order: 3; }
     /* Ensure full width stacking */
     .layout > .panel,
-    .layout > #board-wrap { width: 100%; }
+    .layout > #board-wrap {
+      width: 100%;
+      max-width: 100%;
+    }
+    /* Make board and library table comfortably scrollable on narrow screens */
+    #board-container { width: 100%; overflow: auto; }
+    .table-wrap { max-height: 280px; }
   }
 
   /* ── PANEL ── */
