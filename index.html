@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Chess Endgame Trainer</title>
 <style>
@@ -54,6 +55,13 @@
   }
   @media (max-width: 860px) {
     .layout { grid-template-columns: 1fr; }
+    /* Mobile order: show library, then Create Flashcard, then Board */
+    .layout > .panel:first-of-type { order: 1; }
+    .layout > .panel:last-of-type  { order: 2; }
+    .layout > #board-wrap           { order: 3; }
+    /* Ensure full width stacking */
+    .layout > .panel,
+    .layout > #board-wrap { width: 100%; }
   }
 
   /* ── PANEL ── */
