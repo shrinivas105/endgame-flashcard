@@ -555,7 +555,6 @@ const LIGHT = '#f0ede0', DARK = '#9e9080', SEL = 'rgba(200, 168, 75, 0.38)';
 
 let chess = null, playerColor = 'w', thinking = false, gameOver = false;
 let startFen = '', dragging = null, selectedSquare = null, currentCardId = null;
-let lastMove = null;  // { from, to } — highlighted after every move
 
 function sqToColRow(sq) {
   const file = sq.charCodeAt(0) - 97, rank = parseInt(sq[1]) - 1;
@@ -600,37 +599,6 @@ function draw() {
     ctx.fillText(rLabel, 3, i * SQ + 14);
     ctx.fillStyle = i % 2 === 0 ? '#f0ede0' : '#9e9080';
     ctx.fillText(fLabel, i * SQ + SQ - 11, SIZE - 3);
-  }
-
-  // ── Last move highlight + arrow ──────────────────────────────────────────
-  if (lastMove) {
-    const { col: fc, row: fr } = sqToColRow(lastMove.from);
-    const { col: tc, row: tr } = sqToColRow(lastMove.to);
-    ctx.fillStyle = 'rgba(205, 170, 50, 0.42)';
-    ctx.fillRect(fc * SQ, fr * SQ, SQ, SQ);
-    ctx.fillRect(tc * SQ, tr * SQ, SQ, SQ);
-
-    // Arrow from centre of from-square to centre of to-square
-    const x1 = fc * SQ + SQ / 2, y1 = fr * SQ + SQ / 2;
-    const x2 = tc * SQ + SQ / 2, y2 = tr * SQ + SQ / 2;
-    const dx = x2 - x1, dy = y2 - y1;
-    const len = Math.sqrt(dx * dx + dy * dy);
-    const ux = dx / len, uy = dy / len;
-    const headLen = SQ * 0.38, headW = SQ * 0.22, shaftW = SQ * 0.13;
-    const ax = x1 + ux * SQ * 0.3,  ay = y1 + uy * SQ * 0.3;
-    const ex = x2 - ux * SQ * 0.18, ey = y2 - uy * SQ * 0.18;
-    const px = -uy, py = ux;
-    ctx.beginPath();
-    ctx.moveTo(ax + px * shaftW, ay + py * shaftW);
-    ctx.lineTo(ex - ux * headLen + px * shaftW, ey - uy * headLen + py * shaftW);
-    ctx.lineTo(ex - ux * headLen + px * headW,  ey - uy * headLen + py * headW);
-    ctx.lineTo(ex, ey);
-    ctx.lineTo(ex - ux * headLen - px * headW,  ey - uy * headLen - py * headW);
-    ctx.lineTo(ex - ux * headLen - px * shaftW, ey - uy * headLen - py * shaftW);
-    ctx.lineTo(ax - px * shaftW, ay - py * shaftW);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(180, 130, 20, 0.75)';
-    ctx.fill();
   }
 
   if (selectedSquare) {
@@ -787,7 +755,6 @@ async function doEngineMove() {
     const to = bestmove.slice(2, 4);
     const promotion = bestmove.length > 4 ? bestmove[4] : 'q';
     const move = chess.move({ from, to, promotion });
-    if (move) lastMove = { from, to };
     if (move) draw();
     checkEnd();
   } catch (err) {
@@ -867,7 +834,6 @@ function endDrag(e) {
   if (toSq && toSq !== fromSq) {
     const move = chess.move({ from: fromSq, to: toSq, promotion: 'q' });
     if (move) {
-      lastMove = { from: fromSq, to: toSq };
       selectedSquare = null; draw();
       if (!chess.game_over()) doEngineMove(); else checkEnd();
       return;
@@ -890,7 +856,7 @@ async function loadPosition(fen, cardId = null) {
   const g = new Chess();
   if (!g.load(fen)) return false;
   chess = g; startFen = fen; playerColor = chess.turn();
-  gameOver = false; thinking = false; selectedSquare = null; dragging = null; lastMove = null;
+  gameOver = false; thinking = false; selectedSquare = null; dragging = null;
   currentCardId = cardId;
 
   const badge = document.getElementById('active-badge');
