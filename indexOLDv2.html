@@ -277,72 +277,6 @@
     line-height: 1.8;
   }
   .hint-box span { color: var(--accent2); word-break: break-all; }
-
-  /* ── PGN SOLUTION PANEL ── */
-  #solution-panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    overflow: hidden;
-    display: none;
-  }
-  #solution-panel.visible { display: block; }
-  .solution-header {
-    padding: 11px 16px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-family: 'Playfair Display', serif;
-    font-size: 13px;
-    color: var(--accent);
-    letter-spacing: 0.04em;
-  }
-  .solution-body { padding: 14px 16px; }
-  .btn-toggle-sol {
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--muted);
-    font-size: 11px;
-    font-family: 'Libre Baskerville', serif;
-    padding: 4px 10px;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s;
-  }
-  .btn-toggle-sol:hover { background: var(--surface2); color: var(--text); }
-  .sol-hidden-msg {
-    text-align: center;
-    color: var(--muted);
-    font-size: 12px;
-    padding: 18px 0 6px;
-    font-style: italic;
-  }
-  .sol-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-    gap: 12px;
-    margin-top: 4px;
-  }
-  .sol-board-card {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    padding: 7px 7px 8px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-  }
-  .sol-board-card canvas { display: block; width: 100%; border-radius: 2px; box-shadow: 1px 1px 4px rgba(0,0,0,0.4); }
-  .sol-move-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px;
-    color: var(--accent2);
-    text-align: center;
-    letter-spacing: 0.02em;
-  }
-  .sol-move-label .sol-san { color: var(--accent); font-weight: 700; }
 </style>
 </head>
 <body>
@@ -423,18 +357,6 @@
     <div id="active-badge"></div>
   </div>
 
-  <!-- ── SOLUTION PANEL ── -->
-  <div id="solution-panel">
-    <div class="solution-header">
-      <span>📋 Solution</span>
-      <button class="btn-toggle-sol" id="solToggleBtn" onclick="toggleSolution()">👁 Show</button>
-    </div>
-    <div class="solution-body">
-      <div class="sol-hidden-msg" id="solHiddenMsg">Solution hidden — press Show to reveal</div>
-      <div class="sol-grid" id="solGrid" style="display:none"></div>
-    </div>
-  </div>
-
   <!-- ── RIGHT: CREATE FLASHCARD ── -->
   <div class="panel">
     <div class="panel-title">✏ Create Flashcard</div>
@@ -444,9 +366,6 @@
       <div class="field-label" style="margin-top:12px;">FEN Position</div>
       <textarea class="fen-input" id="fenInput" rows="4"
         placeholder="Paste FEN string here…&#10;e.g. 8/8/8/4k3/8/8/4K3/4R3 w - - 0 1"></textarea>
-      <div class="field-label" style="margin-top:12px;">Solution PGN <span style="text-transform:none;letter-spacing:0;color:#555f69">(optional)</span></div>
-      <textarea class="fen-input" id="pgnInput" rows="4"
-        placeholder="Paste PGN moves here…&#10;e.g. 1. Ke2 Ke5 2. Re1+ Kd4 3. Rd1#"></textarea>
       <div id="create-error"></div>
       <button class="btn-save-fen" id="saveFlashcardBtn">＋ Save Flashcard</button>
 
@@ -784,14 +703,14 @@ function startDrag(e) {
   draw();
 }
 window.addEventListener('mousemove', moveDrag);
-window.addEventListener('touchmove', e => { e.preventDefault(); moveDrag(e); }, { passive: false });
+window.addEventListener('touchmove', e => { if (dragging) e.preventDefault(); moveDrag(e); }, { passive: false });
 function moveDrag(e) {
   if (!dragging) return;
   const { px, py } = getPos(e);
   dragging.x = px; dragging.y = py; draw();
 }
 window.addEventListener('mouseup', endDrag);
-window.addEventListener('touchend', e => { e.preventDefault(); endDrag(e); }, { passive: false });
+window.addEventListener('touchend', e => { if (dragging) e.preventDefault(); endDrag(e); }, { passive: false });
 function endDrag(e) {
   if (!dragging) return;
   canvas.classList.remove('dragging');
@@ -831,12 +750,6 @@ async function loadPosition(fen, cardId = null) {
   }
   document.getElementById('result-overlay').classList.remove('show');
   draw(); checkEnd();
-
-  // Build solution panel from card's PGN
-  const card = cardId ? getCards().find(c => c.id === cardId) : null;
-  const pgn  = card && card.pgn ? card.pgn : '';
-  await buildSolution(pgn, fen);
-
   return true;
 }
 
@@ -881,7 +794,6 @@ window.deleteCard = deleteCard;
 document.getElementById('saveFlashcardBtn').addEventListener('click', async () => {
   const errEl = document.getElementById('create-error');
   const fen   = document.getElementById('fenInput').value.trim();
-  const pgn   = document.getElementById('pgnInput').value.trim();
   errEl.textContent = '';
 
   if (!fen) { errEl.textContent = '✗ Please enter a FEN string.'; return; }
@@ -890,23 +802,16 @@ document.getElementById('saveFlashcardBtn').addEventListener('click', async () =
   const test = new Chess();
   if (!test.load(fen)) { errEl.textContent = '✗ Invalid FEN — check the string and try again.'; return; }
 
-  // Validate PGN if provided
-  if (pgn) {
-    const pgnOk = tryParsePgn(pgn, fen);
-    if (!pgnOk) { errEl.textContent = '✗ Invalid PGN — check moves and try again.'; return; }
-  }
-
   const cards = getCards();
   if (cards.some(c => c.fen === fen)) { errEl.textContent = '✗ This position is already in your library.'; return; }
 
   const name = document.getElementById('nameInput').value.trim() || 'Unnamed';
-  const newCard = { id: genId(), name, fen, pgn: pgn || '', last_result: '—', last_strength: '—', last_played: '—' };
+  const newCard = { id: genId(), name, fen, last_result: '—', last_strength: '—', last_played: '—' };
   cards.push(newCard);
   setCards(cards);
   renderTable(newCard.id);
   document.getElementById('nameInput').value = '';
   document.getElementById('fenInput').value = '';
-  document.getElementById('pgnInput').value = '';
   showToast('Flashcard saved to library!');
 });
 
@@ -949,7 +854,7 @@ function renderTable(activeId = null) {
   tbody.innerHTML = cards.map((c, i) => `
     <tr id="row-${c.id}" class="${activeId === c.id ? 'active-row' : ''}">
       <td style="color:var(--muted)">${i + 1}</td>
-      <td class="fen-cell" title="${c.name || 'Unnamed'}">${c.name || 'Unnamed'}${c.pgn ? ' <span style="color:#79c0ff;font-size:9px;vertical-align:middle" title="Has solution PGN">📋</span>' : ''}</td>
+      <td class="fen-cell" title="${c.name || 'Unnamed'}">${c.name || 'Unnamed'}</td>
       <td class="fen-cell" title="${c.fen}">${c.fen.split(' ')[0]}</td>
       <td>${badge(c.last_result)}</td>
       <td style="color:var(--muted);font-size:10px;white-space:nowrap">${c.last_strength || '—'}</td>
@@ -994,7 +899,6 @@ function importCSV(text) {
   const iId     = header.indexOf('id');
   const iName   = header.indexOf('name');
   const iFen    = header.indexOf('fen');
-  const iPgn    = header.indexOf('pgn');
   const iResult = header.indexOf('last_result');
   const iStrength = header.indexOf('last_strength');
   const iPlayed = header.indexOf('last_played');
@@ -1009,12 +913,11 @@ function importCSV(text) {
     const fen  = cols[iFen] || ''; if (!fen) continue;
     const id   = (iId >= 0 && cols[iId]) ? cols[iId] : genId();
     const name = (iName >= 0 && cols[iName]) ? cols[iName] : 'Unnamed';
-    const pgn  = (iPgn >= 0 && cols[iPgn]) ? cols[iPgn] : '';
     const last_result = (iResult >= 0 && cols[iResult]) ? cols[iResult] : '—';
     const last_strength = (iStrength >= 0 && cols[iStrength]) ? cols[iStrength] : '—';
     const last_played = (iPlayed >= 0 && cols[iPlayed]) ? cols[iPlayed] : '—';
-    if (byId[id]) { byId[id] = { ...byId[id], name, fen, pgn, last_result, last_strength, last_played }; updated++; }
-    else          { byId[id] = { id, name, fen, pgn, last_result, last_strength, last_played }; added++; }
+    if (byId[id]) { byId[id] = { ...byId[id], name, fen, last_result, last_strength, last_played }; updated++; }
+    else          { byId[id] = { id, name, fen, last_result, last_strength, last_played }; added++; }
   }
   setCards(Object.values(byId));
   renderTable();
@@ -1025,8 +928,8 @@ function importCSV(text) {
 document.getElementById('downloadBtn').addEventListener('click', () => {
   const cards = getCards();
   if (!cards.length) { showToast('No positions to download'); return; }
-  const csv = 'id,name,fen,pgn,last_result,last_strength,last_played\n' +
-    cards.map(c => `${c.id},"${(c.name || '').replace(/"/g,'""')}","${c.fen.replace(/"/g,'""')}","${(c.pgn || '').replace(/"/g,'""')}",${c.last_result},${c.last_strength || '—'},"${(c.last_played || '').replace(/"/g,'""')}"`).join('\n');
+  const csv = 'id,name,fen,last_result,last_strength,last_played\n' +
+    cards.map(c => `${c.id},"${(c.name || '').replace(/"/g,'""')}","${c.fen.replace(/"/g,'""')}",${c.last_result},${c.last_strength || '—'},"${(c.last_played || '').replace(/"/g,'""')}"`).join('\n');
   const a = Object.assign(document.createElement('a'), {
     href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })),
     download: `chess-endgames-${new Date().toISOString().slice(0,10)}.csv`
@@ -1048,254 +951,6 @@ document.getElementById('engineStrengthSelect').addEventListener('change', e => 
   ENGINE_SETTINGS.limitStrength = true;
   setStatus(`Engine strength set to ${ENGINE_SETTINGS.elo}`);
 });
-
-// ── SOLUTION PANEL ────────────────────────────────────────────────────────────
-
-// Robustly try to parse a PGN string, trying several strategies.
-// Returns a Chess instance with moves loaded, or null on failure.
-function tryParsePgn(pgn, startFen) {
-  const terminators = ['1-0', '0-1', '1/2-1/2', '*'];
-  const hasTerminator = terminators.some(t => pgn.trimEnd().endsWith(t));
-
-  // Variants to attempt, in order of preference
-  const variants = [pgn];
-  if (!hasTerminator) {
-    variants.push(pgn.trimEnd() + ' *');
-    variants.push(pgn.trimEnd() + '\n*');
-  }
-  // Also strip comments/annotations as a fallback
-  const stripped = pgn.replace(/\{[^}]*\}/g,'').replace(/\([^)]*\)/g,'').replace(/\$\d+/g,'').trim();
-  if (stripped !== pgn) {
-    variants.push(stripped);
-    if (!hasTerminator) variants.push(stripped + ' *');
-  }
-
-  for (const attempt of variants) {
-    // Try with provided startFen (load_pgn ignores pre-loaded position, but reads FEN header)
-    const g1 = new Chess();
-    if (g1.load_pgn(attempt)) return g1;
-
-    // Try with startFen injected as header if no FEN header present
-    if (startFen && !attempt.includes('[FEN')) {
-      const withHeader = `[SetUp "1"]\n[FEN "${startFen}"]\n\n${attempt}`;
-      const g2 = new Chess();
-      if (g2.load_pgn(withHeader)) return g2;
-    }
-  }
-  return null;
-}
-const SOL_PIECE_BASE = 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/';
-const SOL_PIECE_KEYS = ['wK','wQ','wR','wB','wN','wP','bK','bQ','bR','bB','bN','bP'];
-const solPieceImages = {};
-let solPiecesReady = false;
-
-function loadSolPieces() {
-  if (solPiecesReady) return Promise.resolve();
-  return new Promise(resolve => {
-    let loaded = 0;
-    SOL_PIECE_KEYS.forEach(key => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      const done = () => { if (++loaded === SOL_PIECE_KEYS.length) { solPiecesReady = true; resolve(); } };
-      img.onload = done; img.onerror = done;
-      img.src = SOL_PIECE_BASE + key + '.svg';
-      solPieceImages[key] = img;
-    });
-  });
-}
-
-let solMoves = [];        // [{san, from, to, fen}]
-let solVisible = false;
-
-function toggleSolution() {
-  solVisible = !solVisible;
-  document.getElementById('solGrid').style.display    = solVisible ? 'grid' : 'none';
-  document.getElementById('solHiddenMsg').style.display = solVisible ? 'none' : 'block';
-  document.getElementById('solToggleBtn').textContent  = solVisible ? '🙈 Hide' : '👁 Show';
-  if (solVisible && solMoves.length) renderSolBoards();
-}
-
-async function buildSolution(pgn, cardFen) {
-  const panel = document.getElementById('solution-panel');
-  solMoves = [];
-  solVisible = false;
-  document.getElementById('solGrid').style.display      = 'none';
-  document.getElementById('solHiddenMsg').style.display = 'block';
-  document.getElementById('solToggleBtn').textContent   = '👁 Show';
-
-  if (!pgn) { panel.classList.remove('visible'); return; }
-
-  await ensureAssets();
-  const g = tryParsePgn(pgn, cardFen);
-  if (!g) { panel.classList.remove('visible'); return; }
-
-  const history = g.history({ verbose: true });
-  if (!history.length) { panel.classList.remove('visible'); return; }
-
-  // ── Determine correct replay starting FEN ─────────────────────────────────
-  // load_pgn() reads [FEN] header internally; expose it via g.header()
-  const pgnHeaders  = (typeof g.header === 'function') ? g.header() : {};
-  const replayStart = pgnHeaders['FEN'] || null;   // null = standard start position
-
-  const replay = new Chess();
-  if (replayStart) replay.load(replayStart);
-
-  solMoves = [];
-  for (const m of history) {
-    const result = replay.move(m.san);
-    if (!result) break;                             // stop on first illegal move
-    solMoves.push({ san: result.san, from: result.from, to: result.to, fen: replay.fen() });
-  }
-
-  panel.classList.add('visible');
-}
-
-async function renderSolBoards() {
-  await loadSolPieces();
-  const grid = document.getElementById('solGrid');
-  grid.innerHTML = '';
-  const dpr = window.devicePixelRatio || 1;
-  const sz  = 168;                                  // display size in CSS px
-
-  solMoves.forEach((m, i) => {
-    const moveNum = Math.floor(i / 2) + 1;
-    const isBlack = i % 2 === 1;
-    const label   = `${moveNum}${isBlack ? '…' : '.'} ${m.san}`;
-
-    const card = document.createElement('div');
-    card.className = 'sol-board-card';
-
-    const cv = document.createElement('canvas');
-    cv.width        = sz * dpr;
-    cv.height       = sz * dpr;
-    cv.style.width  = sz + 'px';
-    cv.style.height = sz + 'px';
-
-    const lbl = document.createElement('div');
-    lbl.className = 'sol-move-label';
-    lbl.innerHTML = `<span class="sol-san">${label}</span> <span style="opacity:.6">(${m.from}→${m.to})</span>`;
-
-    card.appendChild(cv);
-    card.appendChild(lbl);
-    grid.appendChild(card);
-
-    const ctx = cv.getContext('2d');
-    ctx.scale(dpr, dpr);
-    drawSolBoard(ctx, m.fen, m.from, m.to, sz, playerColor === 'b');
-  });
-}
-
-function drawSolBoard(ctx, fen, fromSq, toSq, size, flipped) {
-  // Mirror the reference PGN-printer board renderer exactly
-  const PAD     = Math.round(size * 0.07);
-  const boardPx = size - PAD;
-  const sq      = Math.floor(boardPx / 8);
-
-  // FEN → 8×8 board array
-  const board = fen.split(' ')[0].split('/').map(rank => {
-    const row = [];
-    for (const ch of rank) {
-      if (/\d/.test(ch)) for (let i = 0; i < +ch; i++) row.push(null);
-      else row.push(ch);
-    }
-    return row;
-  });
-
-  // Paper background (matches reference app)
-  ctx.fillStyle = '#f5f0e8';
-  ctx.fillRect(0, 0, size, size);
-
-  // Squares
-  for (let r = 0; r < 8; r++) {
-    for (let f = 0; f < 8; f++) {
-      const x = PAD + f * sq, y = PAD + r * sq;
-      const logFile = flipped ? 7 - f : f;
-      const logRank = flipped ? r : 7 - r;
-      const sqName  = String.fromCharCode(97 + logFile) + (logRank + 1);
-      let fill;
-      if      (sqName === fromSq) fill = '#c8a84b';
-      else if (sqName === toSq)   fill = '#e8c840';
-      else fill = (r + f) % 2 === 0 ? '#f0ede0' : '#9e9080';
-      ctx.fillStyle = fill;
-      ctx.fillRect(x, y, sq, sq);
-    }
-  }
-
-  // Board border
-  ctx.strokeStyle = '#1a1a18';
-  ctx.lineWidth = 1.2;
-  ctx.strokeRect(PAD, PAD, 8 * sq, 8 * sq);
-
-  // Coordinate labels
-  const fontSize = Math.max(7, Math.round(sq * 0.27));
-  ctx.font      = `${fontSize}px monospace`;
-  ctx.fillStyle = '#666';
-  ctx.textAlign = 'center';
-  for (let f = 0; f < 8; f++) {
-    const logFile = flipped ? 7 - f : f;
-    ctx.fillText(String.fromCharCode(97 + logFile), PAD + f * sq + sq / 2, PAD + 8 * sq + PAD * 0.8);
-  }
-  ctx.textAlign = 'right';
-  for (let r = 0; r < 8; r++) {
-    const logRank = flipped ? r + 1 : 8 - r;
-    ctx.fillText(String(logRank), PAD - 2, PAD + r * sq + sq * 0.65);
-  }
-
-  // Pieces
-  for (let r = 0; r < 8; r++) {
-    for (let f = 0; f < 8; f++) {
-      const boardR = flipped ? 7 - r : r;
-      const boardF = flipped ? 7 - f : f;
-      const piece  = board[boardR][boardF];
-      if (!piece) continue;
-      const color = piece === piece.toUpperCase() ? 'w' : 'b';
-      const key   = color + piece.toUpperCase();
-      const img   = solPieceImages[key];
-      if (img && img.complete && img.naturalWidth > 0) {
-        ctx.drawImage(img, PAD + f * sq, PAD + r * sq, sq, sq);
-      }
-    }
-  }
-
-  // Arrow from → to
-  if (fromSq && toSq && fromSq !== toSq) {
-    const fileFrom = fromSq.charCodeAt(0) - 97;
-    const rankFrom = parseInt(fromSq[1]) - 1;
-    const fileTo   = toSq.charCodeAt(0) - 97;
-    const rankTo   = parseInt(toSq[1]) - 1;
-
-    const toCanvasF = lf => PAD + (flipped ? 7 - lf : lf) * sq + sq / 2;
-    const toCanvasR = lr => PAD + (flipped ? lr : 7 - lr) * sq + sq / 2;
-
-    const cx = toCanvasF(fileFrom), cy = toCanvasR(rankFrom);
-    const ex = toCanvasF(fileTo),   ey = toCanvasR(rankTo);
-    const dx = ex - cx, dy = ey - cy, len = Math.sqrt(dx * dx + dy * dy);
-    if (len < 1) return;
-    const nx = dx / len, ny = dy / len;
-    const arrowW  = Math.max(3, sq * 0.14);
-    const headLen = arrowW * 3.5;
-    const startOff = sq * 0.25, endOff = headLen * 0.6;
-
-    const ax = cx + nx * startOff, ay = cy + ny * startOff;
-    const bx = ex - nx * endOff,   by = ey - ny * endOff;
-    const px = -ny, py = nx;
-
-    ctx.save();
-    ctx.globalAlpha = 0.88;
-    ctx.strokeStyle = '#cc1100';
-    ctx.fillStyle   = '#cc1100';
-    ctx.lineCap = 'round';
-    ctx.lineWidth = arrowW;
-    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
-    const hw = arrowW * 1.6;
-    ctx.beginPath();
-    ctx.moveTo(ex - nx * headLen + px * hw, ey - ny * headLen + py * hw);
-    ctx.lineTo(ex, ey);
-    ctx.lineTo(ex - nx * headLen - px * hw, ey - ny * headLen - py * hw);
-    ctx.closePath(); ctx.fill();
-    ctx.restore();
-  }
-}
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 renderTable();

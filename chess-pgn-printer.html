@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chess PGN Printer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Source+Code+Pro:wght@400;600&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #1a1a18; --ink-light: #4a4a42; --ink-faint: #8a8a7e;
+    --paper: #f5f0e8; --paper-dark: #ece6d4; --paper-darker: #d8d0ba;
+    --accent: #8b1a1a; --accent-light: #b52525; --border: 1px solid #c0b898;
+  }
+  body { font-family: 'Libre Baskerville', Georgia, serif; background: var(--paper-dark); color: var(--ink); min-height: 100vh; }
+  header { background: var(--ink); color: var(--paper); padding: 1.5rem 2rem; display: flex; align-items: baseline; gap: 1rem; border-bottom: 4px solid var(--accent); }
+  header h1 { font-size: 1.6rem; letter-spacing: 0.04em; font-weight: 700; }
+  header span { font-size: 0.85rem; color: #aaa89a; font-style: italic; }
+  .main { max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .card { background: var(--paper); border: var(--border); border-radius: 2px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 2px 2px 8px rgba(0,0,0,0.08); }
+  .card h2 { font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 1rem; border-bottom: 1px solid var(--paper-darker); padding-bottom: 0.5rem; }
+  .drop-zone { border: 2px dashed var(--paper-darker); border-radius: 2px; padding: 2rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; background: var(--paper-dark); }
+  .drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: #f8f2e4; }
+  .drop-zone p { font-size: 0.9rem; color: var(--ink-light); margin-bottom: 0.5rem; }
+  .drop-zone .hint { font-size: 0.78rem; color: var(--ink-faint); font-style: italic; }
+  .drop-zone input[type=file] { display: none; }
+  .btn { display: inline-block; padding: 0.45rem 1.1rem; font-family: 'Libre Baskerville', serif; font-size: 0.82rem; border: 1px solid var(--ink); background: transparent; color: var(--ink); cursor: pointer; transition: background 0.15s, color 0.15s; }
+  .btn:hover { background: var(--ink); color: var(--paper); }
+  .btn.primary { background: var(--accent); color: var(--paper); border-color: var(--accent); }
+  .btn.primary:hover { background: var(--accent-light); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  textarea { width: 100%; min-height: 120px; resize: vertical; font-family: 'Source Code Pro', monospace; font-size: 0.78rem; background: var(--paper-dark); border: var(--border); color: var(--ink); padding: 0.75rem; line-height: 1.5; }
+  .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+  .meta-item label { display: block; font-size: 0.65rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 0.2rem; }
+  .meta-item span { font-size: 0.88rem; font-weight: 700; }
+  .moves-wrap { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; max-height: 160px; overflow-y: auto; }
+  .move-chip { font-family: 'Source Code Pro', monospace; font-size: 0.72rem; background: var(--paper-dark); border: 1px solid var(--paper-darker); border-radius: 2px; padding: 0.22rem 0.45rem; color: var(--ink-light); white-space: nowrap; }
+  .move-chip.selected { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .controls-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--paper-darker); }
+  .controls-row label { font-size: 0.82rem; color: var(--ink-light); white-space: nowrap; }
+  .move-input-group { display: flex; align-items: center; border: var(--border); background: var(--paper-dark); }
+  .move-input-group input[type=number] { width: 72px; font-family: 'Libre Baskerville', serif; font-size: 1rem; font-weight: 700; background: transparent; border: none; color: var(--ink); padding: 0.3rem 0.4rem; text-align: center; -moz-appearance: textfield; }
+  .move-input-group input[type=number]::-webkit-inner-spin-button,
+  .move-input-group input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .move-input-group input[type=number]:focus { outline: none; }
+  .step-btn { width: 32px; height: 34px; font-size: 1.1rem; font-weight: 700; background: var(--paper-darker); border: none; color: var(--ink); cursor: pointer; transition: background 0.12s; line-height: 1; }
+  .step-btn:hover { background: #c8bea0; }
+  .info-badge { font-size: 0.76rem; color: var(--ink-faint); font-style: italic; padding: 0.2rem 0.5rem; border: 1px solid var(--paper-darker); background: var(--paper-dark); }
+  .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 1rem; margin-top: 0.75rem; }
+  .board-card { background: var(--paper); border: 1px solid var(--paper-darker); border-radius: 2px; padding: 0.5rem; box-shadow: 1px 1px 4px rgba(0,0,0,0.07); }
+  .board-card .board-label { font-family: 'Source Code Pro', monospace; font-size: 0.67rem; color: var(--ink-faint); margin-bottom: 0.3rem; text-align: center; }
+  .board-card canvas { display: block; width: 100%; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; }
+  #status { font-style: italic; font-size: 0.82rem; color: var(--ink-faint); margin-top: 0.5rem; }
+  .hidden { display: none !important; }
+  .tab-row { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+  .tab { padding: 0.35rem 0.9rem; font-family: 'Libre Baskerville', serif; font-size: 0.8rem; border: var(--border); background: transparent; color: var(--ink-faint); cursor: pointer; }
+  .tab.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .progress-bar { height: 3px; background: var(--paper-darker); border-radius: 1px; overflow: hidden; margin-top: 0.75rem; }
+  .progress-fill { height: 100%; background: var(--accent); width: 0; transition: width 0.25s; }
+  .explain-box { background: var(--paper-dark); border-left: 3px solid var(--accent); padding: 0.6rem 0.9rem; font-size: 0.8rem; color: var(--ink-light); margin-top: 0.75rem; line-height: 1.6; }
+  .active-orient { background: var(--ink) !important; color: var(--paper) !important; border-color: var(--ink) !important; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Chess PGN Printer</h1>
+  <span>newspaper-quality board sheets for study &amp; print</span>
+</header>
+
+<div class="main">
+
+  <div class="card" id="card-upload">
+    <h2>Step 1 — Load PGN</h2>
+    <div class="tab-row">
+      <button class="tab active" onclick="switchTab('file')">Upload file</button>
+      <button class="tab" onclick="switchTab('paste')">Paste PGN</button>
+    </div>
+    <div id="tab-file">
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <p>Drop a .pgn file here, or click to browse</p>
+        <div class="hint">Accepts standard PGN format</div>
+        <input type="file" id="file-input" accept=".pgn,.txt">
+      </div>
+    </div>
+    <div id="tab-paste" class="hidden">
+      <textarea id="pgn-text" placeholder="Paste PGN here…"></textarea>
+      <div style="margin-top:0.5rem"><button class="btn primary" onclick="parsePastedPGN()">Parse PGN</button></div>
+    </div>
+    <div id="status">Waiting for PGN…</div>
+  </div>
+
+  <div class="card hidden" id="card-game">
+    <h2>Step 2 — Opening &amp; Move Selection</h2>
+
+    <div style="margin-bottom:1.1rem">
+      <label style="display:block;font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:0.4rem">Opening name <span style="font-weight:400;letter-spacing:0;text-transform:none">(optional — printed as PDF header)</span></label>
+      <input type="text" id="game-notes" placeholder="e.g. Alapin Variation · 1.e4 c5 2.c3" style="width:100%;font-family:'Libre Baskerville',serif;font-size:0.88rem;background:var(--paper-dark);border:var(--border);color:var(--ink);padding:0.45rem 0.65rem;">
+    </div>
+
+    <div style="margin-bottom:1rem">
+      <label style="display:block;font-size:0.65rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:0.4rem">Board orientation</label>
+      <div style="display:flex;gap:0.5rem">
+        <button id="orient-white" class="btn orient-btn active-orient" onclick="setOrientation('white')">♔ White (default)</button>
+        <button id="orient-black" class="btn orient-btn" onclick="setOrientation('black')">♚ Black (flipped)</button>
+      </div>
+    </div>
+
+    <div class="controls-row">
+      <label>Moves per player:</label>
+      <div class="move-input-group">
+        <button class="step-btn" onclick="adjustMoves(-5)">−</button>
+        <input type="number" id="moves-per-player" value="10" min="1" step="1" oninput="updatePreview()">
+        <button class="step-btn" onclick="adjustMoves(5)">+</button>
+      </div>
+      <span class="info-badge" id="move-info-badge">–</span>
+    </div>
+    <div class="explain-box">
+      Enter moves <em>per player</em>. Example: <strong>20</strong> = 20 White + 20 Black = <strong>40 boards</strong> in the PDF.
+    </div>
+    <div class="moves-wrap" id="moves-wrap"></div>
+  </div>
+
+  <div class="card hidden" id="card-preview">
+    <h2>Step 3 — Board Preview</h2>
+    <p style="font-size:0.8rem;color:var(--ink-faint);margin-bottom:0.75rem">Gold = from-square · Yellow = to-square · Red arrow = move</p>
+    <div id="preview-grid" class="preview-grid"></div>
+  </div>
+
+  <div class="card hidden" id="card-pdf">
+    <h2>Step 4 — Generate PDF</h2>
+    <p style="font-size:0.85rem;color:var(--ink-light);margin-bottom:1rem">4 columns × 6 rows = 24 boards per A4 page.</p>
+    <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
+      <button class="btn primary" id="pdf-btn" onclick="generatePDF()">Generate &amp; Download PDF</button>
+      <span id="pdf-status" style="font-style:italic;font-size:0.82rem;color:var(--ink-faint)"></span>
+    </div>
+    <div class="progress-bar hidden" id="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+  </div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   REAL CBURNETT PIECES — loaded as Image objects from lichess CDN
+   These are the exact same pieces used on Lichess & Wikipedia.
+   ═══════════════════════════════════════════════════════════════ */
+const PIECE_BASE = 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/';
+
+const PIECE_KEYS = ['wK','wQ','wR','wB','wN','wP','bK','bQ','bR','bB','bN','bP'];
+
+// Preload all 12 piece images
+const pieceImages = {};
+let piecesLoaded = 0;
+let piecesReady = false;
+let onPiecesReady = null;
+
+function preloadPieces() {
+  PIECE_KEYS.forEach(key => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      piecesLoaded++;
+      if (piecesLoaded === PIECE_KEYS.length) {
+        piecesReady = true;
+        setStatus('Pieces loaded. Ready to parse PGN.');
+        if (onPiecesReady) onPiecesReady();
+      }
+    };
+    img.onerror = () => {
+      // fallback: mark as loaded anyway so we don't hang
+      piecesLoaded++;
+      if (piecesLoaded === PIECE_KEYS.length) {
+        piecesReady = true;
+        if (onPiecesReady) onPiecesReady();
+      }
+    };
+    img.src = PIECE_BASE + key + '.svg';
+    pieceImages[key] = img;
+  });
+}
+preloadPieces();
+
+/* ── State ── */
+let parsedMoves = [];
+let gameHeaders = {};
+let boardOrientation = 'white'; // 'white' | 'black'
+
+function setOrientation(o) {
+  boardOrientation = o;
+  document.getElementById('orient-white').classList.toggle('active-orient', o==='white');
+  document.getElementById('orient-black').classList.toggle('active-orient', o==='black');
+  updatePreview();
+}
+
+/* ── Tabs ── */
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',(i===0&&t==='file')||(i===1&&t==='paste')));
+  document.getElementById('tab-file').classList.toggle('hidden', t!=='file');
+  document.getElementById('tab-paste').classList.toggle('hidden', t!=='paste');
+}
+function show(id) { document.getElementById(id).classList.remove('hidden'); }
+function setStatus(s) { document.getElementById('status').textContent = s; }
+
+/* ── File input ── */
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', ()=>dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e=>{ e.preventDefault(); dz.classList.remove('drag-over'); if(e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]); });
+document.getElementById('file-input').addEventListener('change', e=>{ if(e.target.files[0]) readFile(e.target.files[0]); });
+
+function readFile(f) { const r=new FileReader(); r.onload=ev=>parsePGN(ev.target.result); r.readAsText(f); }
+function parsePastedPGN() { parsePGN(document.getElementById('pgn-text').value); }
+
+/* ── PGN parser ── */
+function parsePGN(text) {
+  setStatus('Parsing PGN…');
+  try {
+    const chess = new Chess();
+    let ok = chess.load_pgn(text.trim());
+    if(!ok) {
+      const stripped = text.replace(/\{[^}]*\}/g,'').replace(/\([^)]*\)/g,'').replace(/\$\d+/g,'').trim();
+      ok = chess.load_pgn(stripped);
+    }
+    if(!ok) throw new Error('Invalid PGN');
+    gameHeaders = chess.header();
+    const history = chess.history({verbose:true});
+    if(!history.length) throw new Error('No moves found');
+    const replay = new Chess();
+    parsedMoves = [];
+    for(const m of history) {
+      replay.move(m.san);
+      parsedMoves.push({san:m.san, from:m.from, to:m.to, fen:replay.fen()});
+    }
+    buildUI();
+    setStatus(`Loaded ${parsedMoves.length} half-moves (${Math.ceil(parsedMoves.length/2)} full moves).`);
+  } catch(e) { setStatus('Error: '+e.message); }
+}
+
+/* ── Build UI ── */
+function buildUI() {
+  // Only pre-fill with opening/ECO from PGN if field is empty — never player names
+  const notesEl = document.getElementById('game-notes');
+  if(!notesEl.value) {
+    if(gameHeaders.Opening && gameHeaders.Opening !== '?') notesEl.value = gameHeaders.Opening;
+    else if(gameHeaders.ECO && gameHeaders.ECO !== '?') notesEl.value = gameHeaders.ECO;
+  }
+
+  const maxFull = Math.ceil(parsedMoves.length/2);
+  const inp = document.getElementById('moves-per-player');
+  inp.max = maxFull;
+  inp.value = Math.min(10, maxFull);
+
+  show('card-game'); show('card-preview'); show('card-pdf');
+  updatePreview();
+}
+
+function adjustMoves(delta) {
+  const inp = document.getElementById('moves-per-player');
+  const max = Math.ceil(parsedMoves.length/2);
+  inp.value = Math.max(1, Math.min(max, (parseInt(inp.value)||1)+delta));
+  updatePreview();
+}
+
+/* ── Update preview ── */
+function updatePreview() {
+  const mpp = Math.max(1, parseInt(document.getElementById('moves-per-player').value)||1);
+  const max = Math.ceil(parsedMoves.length/2);
+  const clamped = Math.min(mpp, max);
+  const totalHalf = Math.min(clamped*2, parsedMoves.length);
+  const selected = parsedMoves.slice(0, totalHalf);
+  const wC = selected.filter((_,i)=>i%2===0).length;
+  const bC = selected.filter((_,i)=>i%2===1).length;
+  let badge = `${totalHalf} boards — ${wC} White + ${bC} Black`;
+  if(clamped < mpp) badge += ` (game only has ${max} full moves)`;
+  document.getElementById('move-info-badge').textContent = badge;
+
+  const wrap = document.getElementById('moves-wrap');
+  wrap.innerHTML = '';
+  parsedMoves.forEach((m,i)=>{
+    const chip = document.createElement('div');
+    chip.className = 'move-chip'+(i<totalHalf?' selected':'');
+    chip.textContent = `${Math.floor(i/2)+1}${i%2===0?'.':'…'} ${m.san}`;
+    chip.title = `${m.from}→${m.to}`;
+    wrap.appendChild(chip);
+  });
+
+  const grid = document.getElementById('preview-grid');
+  grid.innerHTML = '';
+  selected.forEach((m,i)=>{
+    const div = document.createElement('div');
+    div.className = 'board-card';
+    const mn = Math.floor(i/2)+1;
+    div.innerHTML = `<div class="board-label">${mn}${i%2===0?'.':'…'} ${m.san} &nbsp;(${m.from}→${m.to})</div>`;
+    const canvas = document.createElement('canvas');
+    canvas.width = 200; canvas.height = 200;
+    div.appendChild(canvas);
+    grid.appendChild(div);
+    // Render after appending (pieces may still be loading)
+    renderBoardToCanvas(canvas, m.fen, m.from, m.to, 200, boardOrientation==='black');
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BOARD RENDERER — draws onto an HTML canvas
+   Uses real cburnett SVG piece images
+   ═══════════════════════════════════════════════════════════════ */
+function fenToBoard(fen) {
+  return fen.split(' ')[0].split('/').map(rank => {
+    const row = [];
+    for(const ch of rank) {
+      if(/\d/.test(ch)) for(let i=0;i<+ch;i++) row.push(null);
+      else row.push(ch);
+    }
+    return row;
+  });
+}
+
+function renderBoardToCanvas(canvas, fen, fromSq, toSq, size, flipped=false) {
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = size * dpr;
+  canvas.height = size * dpr;
+  canvas.style.width = size + 'px';
+  canvas.style.height = size + 'px';
+  ctx.scale(dpr, dpr);
+  _drawBoard(ctx, fen, fromSq, toSq, size, flipped);
+}
+
+function _drawBoard(ctx, fen, fromSq, toSq, size, flipped=false) {
+  const PAD = Math.round(size * 0.07);
+  const boardPx = size - PAD;
+  const sq = Math.floor(boardPx / 8);
+  const board = fenToBoard(fen);
+
+  // Background
+  ctx.fillStyle = '#f5f0e8';
+  ctx.fillRect(0, 0, size, size);
+
+  // Squares
+  for(let r=0;r<8;r++) {
+    for(let f=0;f<8;f++) {
+      const x = PAD + f*sq, y = PAD + r*sq;
+      // Logical square name depends on orientation
+      const logFile = flipped ? 7-f : f;
+      const logRank = flipped ? r   : 7-r;
+      const sqName = String.fromCharCode(97+logFile) + (logRank+1);
+      let fill;
+      if(sqName === fromSq)     fill = '#c8a84b';
+      else if(sqName === toSq)  fill = '#e8c840';
+      else fill = (r+f)%2===0 ? '#f0ede0' : '#9e9080';
+      ctx.fillStyle = fill;
+      ctx.fillRect(x, y, sq, sq);
+    }
+  }
+
+  // Board border
+  ctx.strokeStyle = '#1a1a18';
+  ctx.lineWidth = 1.2;
+  ctx.strokeRect(PAD, PAD, 8*sq, 8*sq);
+
+  // Coordinate labels
+  const fontSize = Math.max(7, Math.round(sq * 0.27));
+  ctx.font = `${fontSize}px monospace`;
+  ctx.fillStyle = '#666';
+  // Files along bottom
+  ctx.textAlign = 'center';
+  for(let f=0;f<8;f++) {
+    const logFile = flipped ? 7-f : f;
+    ctx.fillText(String.fromCharCode(97+logFile), PAD + f*sq + sq/2, PAD + 8*sq + PAD*0.8);
+  }
+  // Ranks along left
+  ctx.textAlign = 'right';
+  for(let r=0;r<8;r++) {
+    const logRank = flipped ? r+1 : 8-r;
+    ctx.fillText(String(logRank), PAD - 2, PAD + r*sq + sq*0.65);
+  }
+
+  // Pieces — look up from board array using orientation
+  for(let r=0;r<8;r++) {
+    for(let f=0;f<8;f++) {
+      const boardR = flipped ? 7-r : r;
+      const boardF = flipped ? 7-f : f;
+      const piece = board[boardR][boardF];
+      if(!piece) continue;
+      const color = piece===piece.toUpperCase() ? 'w' : 'b';
+      const key = color + piece.toUpperCase();
+      const img = pieceImages[key];
+      if(img && img.complete && img.naturalWidth > 0) {
+        const x = PAD + f*sq, y = PAD + r*sq;
+        ctx.drawImage(img, x, y, sq, sq);
+      }
+    }
+  }
+
+  // Arrow from→to (coordinates depend on orientation)
+  if(fromSq && toSq && fromSq !== toSq) {
+    const fileFrom = fromSq.charCodeAt(0)-97;
+    const rankFrom = parseInt(fromSq[1])-1;
+    const fileTo   = toSq.charCodeAt(0)-97;
+    const rankTo   = parseInt(toSq[1])-1;
+
+    // Canvas column/row for a given logical file/rank
+    const toCanvasF = lf => flipped ? 7-lf : lf;
+    const toCanvasR = lr => flipped ? lr    : 7-lr;
+
+    const cx = PAD + toCanvasF(fileFrom)*sq + sq/2;
+    const cy = PAD + toCanvasR(rankFrom)*sq + sq/2;
+    const ex = PAD + toCanvasF(fileTo)*sq   + sq/2;
+    const ey = PAD + toCanvasR(rankTo)*sq   + sq/2;
+
+    const dx=ex-cx, dy=ey-cy, len=Math.sqrt(dx*dx+dy*dy);
+    const nx=dx/len, ny=dy/len;
+    const arrowW = Math.max(3, sq*0.14);
+    const headLen = arrowW * 3.5;
+    const startOff = sq*0.25, endOff = headLen*0.6;
+
+    const ax = cx+nx*startOff, ay = cy+ny*startOff;
+    const bx = ex-nx*endOff,   by = ey-ny*endOff;
+    const px = -ny, py = nx;
+
+    ctx.save();
+    ctx.globalAlpha = 0.88;
+    ctx.strokeStyle = '#cc1100';
+    ctx.fillStyle = '#cc1100';
+    ctx.lineCap = 'round';
+    ctx.lineWidth = arrowW;
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+    const hw = arrowW * 1.6;
+    ctx.beginPath();
+    ctx.moveTo(ex-nx*headLen + px*hw, ey-ny*headLen + py*hw);
+    ctx.lineTo(ex, ey);
+    ctx.lineTo(ex-nx*headLen - px*hw, ey-ny*headLen - py*hw);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PDF GENERATION
+   Renders each board to an offscreen canvas → PNG → jsPDF
+   ═══════════════════════════════════════════════════════════════ */
+async function generatePDF() {
+  const mpp = Math.max(1, parseInt(document.getElementById('moves-per-player').value)||1);
+  const totalHalf = Math.min(mpp*2, parsedMoves.length);
+  const selected = parsedMoves.slice(0, totalHalf);
+  const wC = selected.filter((_,i)=>i%2===0).length;
+  const bC = selected.filter((_,i)=>i%2===1).length;
+
+  const btn = document.getElementById('pdf-btn');
+  btn.disabled = true;
+  document.getElementById('pdf-status').textContent = 'Rendering boards…';
+  document.getElementById('progress-bar').classList.remove('hidden');
+  document.getElementById('progress-fill').style.width = '0%';
+
+  // Wait for pieces if not ready
+  if(!piecesReady) {
+    await new Promise(res => { onPiecesReady = res; });
+  }
+
+  const {jsPDF} = window.jspdf;
+  const A4W=210, A4H=297, MARGIN=10;
+  const COLS=4, ROWS=6, BPP=COLS*ROWS;
+  const cellW=(A4W-2*MARGIN)/COLS;
+  const HEADER_H=7;
+  const cellH=(A4H-2*MARGIN-HEADER_H)/ROWS;
+  const labelH=5.5;
+  const boardMM=Math.min(cellW-1.5, cellH-labelH-1.5);
+  const boardPx=480; // high res for PDF
+
+  const pdf = new jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+
+  // Offscreen canvas for PDF rendering
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = boardPx;
+  offCanvas.height = boardPx;
+  const offCtx = offCanvas.getContext('2d');
+
+  function setProgress(p){ document.getElementById('progress-fill').style.width=Math.round(p*100)+'%'; }
+
+  function drawPageHeader(pageNum, totalPages) {
+    const notes = document.getElementById('game-notes').value.trim();
+    if(notes) {
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(9); pdf.setTextColor(20,20,20);
+      pdf.text(notes, MARGIN, MARGIN+4);
+    }
+    pdf.setFontSize(7.5); pdf.setFont('helvetica','normal'); pdf.setTextColor(160,150,130);
+    pdf.text(`${pageNum} / ${totalPages}`, A4W-MARGIN, MARGIN+4, {align:'right'});
+    pdf.setDrawColor(180,165,140); pdf.setLineWidth(0.25);
+    pdf.line(MARGIN, MARGIN+HEADER_H, A4W-MARGIN, MARGIN+HEADER_H);
+  }
+
+  const totalPages = Math.ceil(selected.length/BPP);
+  let pageNum=0;
+
+  for(let i=0;i<selected.length;i++) {
+    const m = selected[i];
+    const pos = i%BPP;
+    if(pos===0) {
+      if(pageNum>0) pdf.addPage();
+      pageNum++;
+      drawPageHeader(pageNum, totalPages);
+    }
+    const col=pos%COLS, row=Math.floor(pos/COLS);
+    const xMM=MARGIN+col*cellW;
+    const yMM=MARGIN+HEADER_H+row*cellH;
+
+    // Draw board to offscreen canvas
+    const flipped = boardOrientation === 'black';
+    offCtx.clearRect(0,0,boardPx,boardPx);
+    _drawBoard(offCtx, m.fen, m.from, m.to, boardPx, flipped);
+    const png = offCanvas.toDataURL('image/png', 0.95);
+    pdf.addImage(png,'PNG', xMM+0.75, yMM+0.5, boardMM, boardMM, '', 'FAST');
+
+    // Thin black border around each cell
+    pdf.setDrawColor(30,30,28); pdf.setLineWidth(0.25);
+    pdf.rect(xMM+0.3, yMM+0.2, cellW-0.6, cellH-0.3);
+
+    // Label
+    const mn=Math.floor(i/2)+1;
+    const label=`${mn}${i%2===0?'.':'…'} ${m.san}   ${m.from}→${m.to}`;
+    pdf.setFontSize(6); pdf.setFont('helvetica',i%2===0?'normal':'italic');
+    pdf.setTextColor(50,46,38);
+    pdf.text(label, xMM+boardMM/2+0.75, yMM+boardMM+4, {align:'center'});
+
+    setProgress((i+1)/selected.length);
+    await new Promise(r=>setTimeout(r,0));
+  }
+
+  const slug = (document.getElementById('game-notes').value.trim()||'chess-study').replace(/\s+/g,'-').replace(/[^a-zA-Z0-9-]/g,'').slice(0,40);
+  pdf.save(`${slug}-${mpp}mpp.pdf`);
+  btn.disabled=false;
+  document.getElementById('pdf-status').textContent=
+    `Done! ${selected.length} boards (${wC}W + ${bC}B) across ${pageNum} page${pageNum>1?'s':''}.`;
+  setProgress(1);
+}
+</script>
+</body>
+</html>
