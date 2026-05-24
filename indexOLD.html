@@ -906,7 +906,7 @@ document.getElementById('saveFlashcardBtn').addEventListener('click', async () =
   }
 
   const cards = getCards();
-
+  if (cards.some(c => c.fen === fen)) { errEl.textContent = '✗ This position is already in your library.'; return; }
 
   const name = document.getElementById('nameInput').value.trim() || 'Unnamed';
   const newCard = { id: genId(), name, fen, pgn: pgn || '', last_result: '—', last_strength: '—', last_played: '—' };
