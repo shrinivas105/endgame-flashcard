@@ -703,14 +703,14 @@ function startDrag(e) {
   draw();
 }
 window.addEventListener('mousemove', moveDrag);
-window.addEventListener('touchmove', e => { if (dragging) e.preventDefault(); moveDrag(e); }, { passive: false });
+window.addEventListener('touchmove', e => { e.preventDefault(); moveDrag(e); }, { passive: false });
 function moveDrag(e) {
   if (!dragging) return;
   const { px, py } = getPos(e);
   dragging.x = px; dragging.y = py; draw();
 }
 window.addEventListener('mouseup', endDrag);
-window.addEventListener('touchend', e => { if (dragging) e.preventDefault(); endDrag(e); }, { passive: false });
+window.addEventListener('touchend', e => { e.preventDefault(); endDrag(e); }, { passive: false });
 function endDrag(e) {
   if (!dragging) return;
   canvas.classList.remove('dragging');
