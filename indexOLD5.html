@@ -488,11 +488,10 @@ const CHESS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.
 // Edit these values directly in index.html to adjust engine strength.
 const ENGINE_SETTINGS = {
   threads: 4,
-  hash: 256,
+  hash: 128,
+  limitStrength: true,
   elo: 3200,
-  // movetime in ms per move; higher = stronger play at any ELO
-  // UCI_LimitStrength only works with movetime/infinite, NOT with depth
-  movetime: 2000,
+  depth: 16,
 };
 
 let assetsReady = false;
@@ -675,10 +674,8 @@ function handleEngineMessage(event) {
     if (data === 'uciok') {
       engine.postMessage('setoption name Threads value ' + ENGINE_SETTINGS.threads);
       engine.postMessage('setoption name Hash value ' + ENGINE_SETTINGS.hash);
-      // UCI_LimitStrength caps playing strength — only enable below max ELO
-      const limitStr = ENGINE_SETTINGS.elo < 3200;
-      engine.postMessage('setoption name UCI_LimitStrength value ' + (limitStr ? 'true' : 'false'));
-      if (limitStr) {
+      engine.postMessage('setoption name UCI_LimitStrength value ' + (ENGINE_SETTINGS.limitStrength ? 'true' : 'false'));
+      if (ENGINE_SETTINGS.limitStrength) {
         engine.postMessage('setoption name UCI_Elo value ' + ENGINE_SETTINGS.elo);
       }
       engine.postMessage('isready');
@@ -720,7 +717,7 @@ async function doEngineMove() {
     }
     const fen = chess.fen();
     engine.postMessage('position fen ' + fen);
-    engine.postMessage('go movetime ' + ENGINE_SETTINGS.movetime);
+    engine.postMessage('go depth ' + ENGINE_SETTINGS.depth);
     const bestmove = await new Promise((resolve, reject) => {
       engineMoveResolver = resolve;
     });
@@ -1049,16 +1046,9 @@ function showToast(msg) {
 }
 
 document.getElementById('engineStrengthSelect').addEventListener('change', e => {
-  const elo = parseInt(e.target.value, 10) || ENGINE_SETTINGS.elo;
-  ENGINE_SETTINGS.elo = elo;
-  // Scale thinking time with ELO: weaker = less time (simpler play), stronger = more time
-  ENGINE_SETTINGS.movetime = elo >= 3200 ? 3000 : elo >= 2800 ? 2000 : elo >= 2500 ? 1200 : 600;
-  // Re-apply UCI_LimitStrength for the new ELO on next engine init
-  engineReady = false;
-  engineInitializing = null;
-  if (engine) { engine.terminate(); engine = null; }
-  setStatus(`Engine set to ${elo === 3200 ? 'full strength' : 'ELO ' + elo} — restarting…`);
-  setTimeout(() => initEngine().then(() => setStatus(`Engine ready at ${elo >= 3200 ? 'full strength' : 'ELO ' + elo}`)), 100);
+  ENGINE_SETTINGS.elo = parseInt(e.target.value, 10) || ENGINE_SETTINGS.elo;
+  ENGINE_SETTINGS.limitStrength = true;
+  setStatus(`Engine strength set to ${ENGINE_SETTINGS.elo}`);
 });
 
 // ── SOLUTION PANEL ────────────────────────────────────────────────────────────
