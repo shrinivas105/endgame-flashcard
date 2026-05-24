@@ -152,19 +152,8 @@
     border-radius: 6px;
     overflow: hidden;
     box-shadow: 0 8px 32px rgba(0,0,0,0.55);
-    width: 100%;
-    max-width: 512px;
-    aspect-ratio: 1 / 1;
-    align-self: center;
   }
-  canvas {
-    display: block;
-    cursor: grab;
-    width: 100% !important;
-    height: 100% !important;
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges;
-  }
+  canvas { display: block; cursor: grab; }
   canvas.dragging { cursor: grabbing; }
 
   #status {
@@ -850,7 +839,7 @@ async function loadPosition(fen, cardId = null) {
     badge.style.display = 'none';
   }
   document.getElementById('result-overlay').classList.remove('show');
-  resizeCanvas(); draw(); checkEnd();
+  draw(); checkEnd();
 
   // Build solution panel from card's PGN
   const card = cardId ? getCards().find(c => c.id === cardId) : null;
