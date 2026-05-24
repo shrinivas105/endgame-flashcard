@@ -12,14 +12,14 @@
     --bg: #0d1117;
     --surface: #161b22;
     --surface2: #1f2a38;
-    --border: #3d444d;
+    --border: #30363d;
     --accent: #f0f6fc;
-    --accent2: #79c0ff;
+    --accent2: #8b949e;
     --win: #56d364;
     --loss: #ff7b72;
     --draw: #79c0ff;
-    --text: #f0f6fc;
-    --muted: #b0bec5;
+    --text: #c9d1d9;
+    --muted: #8b949e;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,7 +42,7 @@
     color: var(--accent);
     letter-spacing: 0.03em;
   }
-  header p { color: #adc8e6; font-size: 11px; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.1em; }
+  header p { color: var(--muted); font-size: 11px; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.1em; }
 
   /* ── LAYOUT ── */
   /* Vertical stacked layout for all screen sizes */
@@ -137,7 +137,7 @@
     resize: vertical;
   }
   .fen-input:focus { border-color: var(--accent2); }
-  .field-label { font-size: 11px; color: #f0f6fc; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
+  .field-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
 
   /* ── BOARD AREA ── */
   #board-wrap {
@@ -167,14 +167,14 @@
 
   #status {
     font-size: 13px;
-    color: #e6edf3;
+    color: var(--text);
     font-weight: 500;
     min-height: 20px;
     text-align: center;
   }
   #active-badge {
     font-size: 10px;
-    color: #c8d8e8;
+    color: var(--muted);
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 5px;
@@ -194,7 +194,7 @@
     margin-bottom: 12px;
     align-items: center;
   }
-  .fc-count { font-size: 11px; color: #c8d8e8; font-weight: 600; margin-left: auto; }
+  .fc-count { font-size: 11px; color: var(--muted); margin-left: auto; }
 
   .table-wrap {
     border: 1px solid var(--border);
@@ -242,7 +242,7 @@
   .r-none { background: var(--surface2); color: var(--muted); }
 
   .empty-state {
-    text-align: center; color: #c8d8e8;
+    text-align: center; color: var(--muted);
     padding: 36px 20px; font-size: 12px; line-height: 1.9;
   }
   .empty-state .ico { font-size: 30px; margin-bottom: 8px; }
@@ -259,7 +259,7 @@
   #result-overlay.show { display: flex; }
   .ov-icon { font-size: 52px; }
   .ov-title { font-family: 'Playfair Display', serif; font-size: 28px; color: var(--accent); }
-  .ov-sub   { font-size: 11px; color: #c8d8e8; letter-spacing: 0.08em; }
+  .ov-sub   { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; }
   .ov-btns  { display: flex; gap: 10px; }
 
   /* ── TOAST ── */
@@ -347,44 +347,11 @@
   .sol-move-label {
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
-    color: #c8d8e8;
+    color: var(--accent2);
     text-align: center;
     letter-spacing: 0.02em;
   }
   .sol-move-label .sol-san { color: var(--accent); font-weight: 700; }
-
-  /* ── CLEAN LAYOUT ── */
-  .engine-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .csv-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  #create-section { width: 100%; }
-  .btn-create-toggle {
-    background: rgba(126,184,201,0.13);
-    color: #79c0ff;
-    border: 1px dashed rgba(121,192,255,0.5);
-    font-size: 13px; font-weight: 700;
-    padding: 11px 22px; border-radius: 9px; width: 100%;
-    letter-spacing: 0.05em; cursor: pointer;
-    transition: filter 0.15s, background 0.15s;
-    font-family: 'Libre Baskerville', serif;
-  }
-  .btn-create-toggle:hover { filter: brightness(1.15); background: rgba(126,184,201,0.22); }
-  .btn-create-toggle.open {
-    background: rgba(126,184,201,0.22);
-    border-style: solid;
-  }
-  /* Keep table-wrap inside layout flow */
-  .layout > .table-wrap { width: 100%; overflow-x: auto; }
-
 </style>
 </head>
 <body>
@@ -396,21 +363,58 @@
 
 <div class="layout">
 
-  <!-- ── ENGINE STRENGTH ── -->
-  <div class="engine-row">
-    <label class="field-label" style="margin:0; white-space:nowrap;">Engine Strength</label>
-    <select id="engineStrengthSelect" class="fen-input" style="max-width:160px; padding:8px 10px;">
-      <option value="2000">2000</option>
-      <option value="2500">2500</option>
-      <option value="2800">2800</option>
-      <option value="3200" selected>3200</option>
-    </select>
+  <!-- ── LEFT: LIBRARY ── -->
+  <div class="panel">
+    <div class="panel-title">
+      📚 Endgame Library
+    </div>
+    <div class="panel-body">
+
+      <button class="btn btn-practice" id="practiceBtn">🎯 Practice Random</button>
+      <div style="margin-top: 12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <label class="field-label" style="margin:0; white-space:nowrap;">Engine Strength</label>
+        <select id="engineStrengthSelect" class="fen-input" style="max-width:150px; padding: 8px 10px;">
+          <option value="2000">2000</option>
+          <option value="2500">2500</option>
+          <option value="2800">2800</option>
+          <option value="3200" selected>3200</option>
+        </select>
+      </div>
+
+      <div style="height:12px"></div>
+
+      <div class="lib-toolbar">
+        <button class="btn btn-upload"   id="uploadBtn">📂 Upload CSV</button>
+        <button class="btn btn-download" id="downloadBtn">💾 Download CSV</button>
+        <input type="file" id="csvFileInput" accept=".csv" style="display:none">
+        <span class="fc-count" id="fcCount">0 positions</span>
+      </div>
+
+      <div class="table-wrap" id="tableWrap">
+        <div class="empty-state" id="emptyState">
+          <div class="ico">♟</div>
+          No positions yet.<br>Create a flashcard<br>or upload a CSV.
+        </div>
+        <table id="fcTable" style="display:none">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Position</th>
+              <th>Result</th>
+              <th>Strength</th>
+              <th>Played</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="fcTbody"></tbody>
+        </table>
+      </div>
+
+    </div>
   </div>
 
-  <!-- ── FLASHCARD BUTTON ── -->
-  <button class="btn btn-practice" id="practiceBtn">♟ Endgame Flashcard</button>
-
-  <!-- ── BOARD ── -->
+  <!-- ── CENTER: BOARD ── -->
   <div id="board-wrap">
     <div id="board-container">
       <canvas id="board"></canvas>
@@ -419,74 +423,52 @@
         <div class="ov-title" id="ovTitle"></div>
         <div class="ov-sub"   id="ovSub"></div>
         <div class="ov-btns">
-          <button class="btn btn-secondary" id="ovRetry">&#x21BA; Retry</button>
-          <button class="btn btn-primary"   id="ovNext">Next &#x2192;</button>
+          <button class="btn btn-secondary" id="ovRetry">↺ Retry</button>
+          <button class="btn btn-primary"   id="ovNext">Next →</button>
         </div>
       </div>
     </div>
-    <div id="status">Press Endgame Flashcard to start practising</div>
+    <div id="status">Create a flashcard or practice a saved endgame</div>
     <div id="active-badge"></div>
   </div>
 
   <!-- ── SOLUTION PANEL ── -->
   <div id="solution-panel">
     <div class="solution-header">
-      <span>&#x1F4CB; Solution</span>
-      <button class="btn-toggle-sol" id="solToggleBtn" onclick="toggleSolution()">&#x1F441; Show</button>
+      <span>📋 Solution</span>
+      <button class="btn-toggle-sol" id="solToggleBtn" onclick="toggleSolution()">👁 Show</button>
     </div>
     <div class="solution-body">
-      <div class="sol-hidden-msg" id="solHiddenMsg">Solution hidden &mdash; press Show to reveal</div>
+      <div class="sol-hidden-msg" id="solHiddenMsg">Solution hidden — press Show to reveal</div>
       <div class="sol-grid" id="solGrid" style="display:none"></div>
     </div>
   </div>
 
-  <!-- ── CREATE FLASHCARD (collapsed) ── -->
-  <div id="create-section">
-    <button class="btn btn-create-toggle" id="createToggleBtn" onclick="toggleCreateForm()">&#x270F; Create Flashcard</button>
-    <div id="create-form" style="display:none">
-      <div class="panel" style="margin-top:10px;">
-        <div class="panel-body">
-          <div class="field-label">Name</div>
-          <input id="nameInput" class="fen-input" placeholder="Example: Lucena endgame">
-          <div class="field-label" style="margin-top:12px;">FEN Position</div>
-          <textarea class="fen-input" id="fenInput" rows="3"
-            placeholder="Paste FEN string here&#x2026;&#10;e.g. 8/8/8/4k3/8/8/4K3/4R3 w - - 0 1"></textarea>
-          <div class="field-label" style="margin-top:12px;">Solution PGN <span style="text-transform:none;letter-spacing:0;color:#8db4d4">(optional)</span></div>
-          <textarea class="fen-input" id="pgnInput" rows="3"
-            placeholder="Paste PGN moves here&#x2026;&#10;e.g. 1. Ke2 Ke5 2. Re1+ Kd4 3. Rd1#"></textarea>
-          <div id="create-error"></div>
-          <button class="btn-save-fen" id="saveFlashcardBtn">&#xFF0B; Save Flashcard</button>
-        </div>
+  <!-- ── RIGHT: CREATE FLASHCARD ── -->
+  <div class="panel">
+    <div class="panel-title">✏ Create Flashcard</div>
+    <div class="panel-body">
+      <div class="field-label">Name</div>
+      <input id="nameInput" class="fen-input" placeholder="Example: Lucina endgame">
+      <div class="field-label" style="margin-top:12px;">FEN Position</div>
+      <textarea class="fen-input" id="fenInput" rows="4"
+        placeholder="Paste FEN string here…&#10;e.g. 8/8/8/4k3/8/8/4K3/4R3 w - - 0 1"></textarea>
+      <div class="field-label" style="margin-top:12px;">Solution PGN <span style="text-transform:none;letter-spacing:0;color:#555f69">(optional)</span></div>
+      <textarea class="fen-input" id="pgnInput" rows="4"
+        placeholder="Paste PGN moves here…&#10;e.g. 1. Ke2 Ke5 2. Re1+ Kd4 3. Rd1#"></textarea>
+      <div id="create-error"></div>
+      <button class="btn-save-fen" id="saveFlashcardBtn">＋ Save Flashcard</button>
+
+      <div class="hint-box">
+        <strong style="color:var(--text)">CSV Format</strong><br>
+        id, name, fen, last_result, last_strength, last_played<br>
+        <span>abc1,"Lucina endgame","8/8/... w - - 0 1",win,2800,2025-05-23 10:30</span>
       </div>
     </div>
   </div>
 
-  <!-- ── CSV UPLOAD / DOWNLOAD ── -->
-  <div class="csv-row">
-    <button class="btn btn-upload"   id="uploadBtn">&#x1F4C2; Upload CSV</button>
-    <button class="btn btn-download" id="downloadBtn">&#x1F4BE; Download CSV</button>
-    <input type="file" id="csvFileInput" accept=".csv" style="display:none">
-    <span class="fc-count" id="fcCount">0 positions</span>
-  </div>
-
-  <!-- ── LIBRARY TABLE (managed by JS) ── -->
-  <div class="table-wrap" id="tableWrap" style="display:none">
-    <div class="empty-state" id="emptyState" style="display:none">
-      <div class="ico">&#x265F;</div>
-      No positions yet.<br>Create a flashcard or upload a CSV.
-    </div>
-    <table id="fcTable" style="display:none">
-      <thead>
-        <tr>
-          <th>#</th><th>Name</th><th>Position</th>
-          <th>Result</th><th>Strength</th><th>Played</th><th></th>
-        </tr>
-      </thead>
-      <tbody id="fcTbody"></tbody>
-    </table>
-  </div>
-
 </div>
+
 <div id="toast"></div>
 
 <!-- ══ SCRIPTS ══════════════════════════════════════════════════════════════ -->
@@ -1027,28 +1009,22 @@ function renderTable(activeId = null) {
   const cards   = getCards();
   const emptyEl = document.getElementById('emptyState');
   const tableEl = document.getElementById('fcTable');
-  const wrapEl  = document.getElementById('tableWrap');
   const tbody   = document.getElementById('fcTbody');
   document.getElementById('fcCount').textContent = `${cards.length} position${cards.length !== 1 ? 's' : ''}`;
 
   if (!cards.length) {
-    wrapEl.style.display  = 'none';
-    emptyEl.style.display = 'none';
-    tableEl.style.display = 'none';
-    return;
+    emptyEl.style.display = 'block'; tableEl.style.display = 'none'; return;
   }
-  wrapEl.style.display  = 'block';
-  emptyEl.style.display = 'none';
-  tableEl.style.display = 'table';
+  emptyEl.style.display = 'none'; tableEl.style.display = 'table';
 
   tbody.innerHTML = cards.map((c, i) => `
     <tr id="row-${c.id}" class="${activeId === c.id ? 'active-row' : ''}">
-      <td style="color:#b0bec5;font-weight:600">${i + 1}</td>
+      <td style="color:var(--muted)">${i + 1}</td>
       <td class="fen-cell" title="${c.name || 'Unnamed'}">${c.name || 'Unnamed'}${c.pgn ? ' <span style="color:#79c0ff;font-size:9px;vertical-align:middle" title="Has solution PGN">📋</span>' : ''}</td>
       <td class="fen-cell" title="${c.fen}">${c.fen.split(' ')[0]}</td>
       <td>${badge(c.last_result)}</td>
-      <td style="color:#c8d8e8;font-size:11px;white-space:nowrap">${c.last_strength || '—'}</td>
-      <td style="color:#c8d8e8;font-size:11px;white-space:nowrap">${c.last_played}</td>
+      <td style="color:var(--muted);font-size:10px;white-space:nowrap">${c.last_strength || '—'}</td>
+      <td style="color:var(--muted);font-size:10px;white-space:nowrap">${c.last_played}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-ghost" title="Practice" onclick="practiceCard('${c.id}')">▶</button>
         <button class="btn btn-ghost" title="Delete"   onclick="deleteCard('${c.id}')">✕</button>
@@ -1235,16 +1211,6 @@ function loadSolPieces() {
 
 let solMoves = [];        // [{san, from, to, fen}]
 let solVisible = false;
-
-function toggleCreateForm() {
-  const form = document.getElementById('create-form');
-  const btn  = document.getElementById('createToggleBtn');
-  const open = form.style.display === 'none';
-  form.style.display = open ? 'block' : 'none';
-  btn.classList.toggle('open', open);
-  btn.textContent = open ? '✕ Close' : '✏ Create Flashcard';
-  if (open) setTimeout(() => form.querySelector('#nameInput').focus(), 50);
-}
 
 function toggleSolution() {
   solVisible = !solVisible;
