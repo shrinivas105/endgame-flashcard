@@ -152,8 +152,17 @@
     border-radius: 6px;
     overflow: hidden;
     box-shadow: 0 8px 32px rgba(0,0,0,0.55);
+    /* width is driven by canvas.style.width set in resizeCanvas() */
+    flex-shrink: 0;
   }
-  canvas { display: block; cursor: grab; }
+  canvas {
+    display: block;
+    cursor: grab;
+    /* do NOT set CSS width/height here — resizeCanvas() sets them via style */
+    image-rendering: pixelated;           /* Chrome/Edge — keeps squares sharp */
+    image-rendering: -webkit-optimize-contrast; /* Safari */
+    image-rendering: crisp-edges;         /* Firefox */
+  }
   canvas.dragging { cursor: grabbing; }
 
   #status {
@@ -525,10 +534,22 @@ async function ensureAssets() {
 // ── BOARD ─────────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('board');
 const ctx    = canvas.getContext('2d');
-const SQ     = Math.min(Math.floor((Math.min(window.innerWidth, 500) - 40) / 8), 64);
-const SIZE   = SQ * 8;
-canvas.width  = SIZE;
-canvas.height = SIZE;
+let SQ = 56, SIZE = 448;          // updated by resizeCanvas() on every layout change
+
+function resizeCanvas() {
+  const dpr  = window.devicePixelRatio || 1;
+  const css  = canvas.parentElement.clientWidth || 320;
+  SQ         = Math.floor(css / 8);
+  SIZE       = SQ * 8;
+  // bitmap at physical resolution → crisp on retina/mobile
+  canvas.width  = SIZE * dpr;
+  canvas.height = SIZE * dpr;
+  // CSS size stays at logical pixels
+  canvas.style.width  = SIZE + 'px';
+  canvas.style.height = SIZE + 'px';
+  // scale context so all draw calls use logical coords (SQ units)
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
 
 const LIGHT = '#f0ede0', DARK = '#9e9080', SEL = 'rgba(200, 168, 75, 0.38)';
 
@@ -821,6 +842,13 @@ function endDrag(e) {
   selectedSquare = (toSq === fromSq && selectedSquare !== fromSq) ? fromSq : null;
   draw();
 }
+
+// ── RESPONSIVE RESIZE ────────────────────────────────────────────────────────
+resizeCanvas();   // initial size before any position is loaded
+new ResizeObserver(() => { resizeCanvas(); if (chess) draw(); })
+  .observe(canvas.parentElement);
+window.addEventListener('orientationchange', () =>
+  setTimeout(() => { resizeCanvas(); if (chess) draw(); }, 200));
 
 // ── LOAD POSITION ─────────────────────────────────────────────────────────────
 async function loadPosition(fen, cardId = null) {
