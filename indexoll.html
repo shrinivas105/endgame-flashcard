@@ -982,36 +982,9 @@ document.getElementById('csvFileInput').addEventListener('change', function () {
   if (!this.files[0]) return;
   const reader = new FileReader();
   reader.onload = e => { importCSV(e.target.result); this.value = ''; };
-  reader.readAsText(this.files[0], 'windows-1252');
+  reader.readAsText(this.files[0]);
 });
 
-// ── Full RFC-4180 CSV parser — handles quoted multi-line fields & \r\n ────────
-function parseCSVRows(text) {
-  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const rows = [];
-  let i = 0, row = [], cur = '';
-  while (i < text.length) {
-    const ch = text[i];
-    if (ch === '"') {
-      i++;
-      while (i < text.length) {
-        if (text[i] === '"' && text[i+1] === '"') { cur += '"'; i += 2; }
-        else if (text[i] === '"') { i++; break; }
-        else { cur += text[i++]; }
-      }
-    } else if (ch === ',') {
-      row.push(cur); cur = ''; i++;
-    } else if (ch === '\n') {
-      row.push(cur); cur = '';
-      rows.push(row); row = []; i++;
-    } else {
-      cur += ch; i++;
-    }
-  }
-  if (cur || row.length) { row.push(cur); rows.push(row); }
-  while (rows.length && rows[rows.length-1].every(c => !c.trim())) rows.pop();
-  return rows;
-}
 function parseCSVLine(line) {
   const out = []; let cur = '', inQ = false;
   for (const ch of line) {
@@ -1024,9 +997,9 @@ function parseCSVLine(line) {
 }
 
 function importCSV(text) {
-  const rows = parseCSVRows(text);
-  if (rows.length < 2) { showToast('CSV has no data rows'); return; }
-  const header  = rows[0].map(h => h.trim().toLowerCase().replace(/\s+/g,'_'));
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (lines.length < 2) { showToast('CSV has no data rows'); return; }
+  const header  = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/\s+/g,'_'));
   const iId     = header.indexOf('id');
   const iName   = header.indexOf('name');
   const iFen    = header.indexOf('fen');
@@ -1040,15 +1013,15 @@ function importCSV(text) {
   const byId = Object.fromEntries(existing.map(c => [c.id, c]));
   let added = 0, updated = 0;
 
-  for (let i = 1; i < rows.length; i++) {
-    const cols = rows[i];
-    const fen  = (cols[iFen] || '').trim(); if (!fen) continue;
-    const id   = (iId >= 0 && cols[iId] && cols[iId].trim()) ? cols[iId].trim() : genId();
-    const name = (iName >= 0 && cols[iName]) ? cols[iName].trim() : 'Unnamed';
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCSVLine(lines[i]);
+    const fen  = cols[iFen] || ''; if (!fen) continue;
+    const id   = (iId >= 0 && cols[iId]) ? cols[iId] : genId();
+    const name = (iName >= 0 && cols[iName]) ? cols[iName] : 'Unnamed';
     const pgn  = (iPgn >= 0 && cols[iPgn]) ? cols[iPgn] : '';
-    const last_result   = (iResult >= 0   && cols[iResult])   ? cols[iResult].trim()   : '—';
-    const last_strength = (iStrength >= 0 && cols[iStrength]) ? cols[iStrength].trim() : '—';
-    const last_played   = (iPlayed >= 0   && cols[iPlayed])   ? cols[iPlayed].trim()   : '—';
+    const last_result = (iResult >= 0 && cols[iResult]) ? cols[iResult] : '—';
+    const last_strength = (iStrength >= 0 && cols[iStrength]) ? cols[iStrength] : '—';
+    const last_played = (iPlayed >= 0 && cols[iPlayed]) ? cols[iPlayed] : '—';
     if (byId[id]) { byId[id] = { ...byId[id], name, fen, pgn, last_result, last_strength, last_played }; updated++; }
     else          { byId[id] = { id, name, fen, pgn, last_result, last_strength, last_played }; added++; }
   }
