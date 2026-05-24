@@ -464,21 +464,20 @@
 
 <!-- ══ SCRIPTS ══════════════════════════════════════════════════════════════ -->
 <script>
-// ── PIECE IMAGES (lichess cburnett theme — matches solution boards) ──────────
-const _CB = 'https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/';
+// ── PIECE IMAGES (Chess.com neo theme) ─────────────────────────────────────
 const PIECE_IMAGES = {
-  wK: _CB + 'wK.svg',
-  wQ: _CB + 'wQ.svg',
-  wR: _CB + 'wR.svg',
-  wB: _CB + 'wB.svg',
-  wN: _CB + 'wN.svg',
-  wP: _CB + 'wP.svg',
-  bK: _CB + 'bK.svg',
-  bQ: _CB + 'bQ.svg',
-  bR: _CB + 'bR.svg',
-  bB: _CB + 'bB.svg',
-  bN: _CB + 'bN.svg',
-  bP: _CB + 'bP.svg',
+  wK: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wk.png',
+  wQ: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wq.png',
+  wR: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wr.png',
+  wB: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wb.png',
+  wN: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wn.png',
+  wP: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/wp.png',
+  bK: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/bk.png',
+  bQ: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/bq.png',
+  bR: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/br.png',
+  bB: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/bb.png',
+  bN: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/bn.png',
+  bP: 'https://images.chesscomfiles.com/chess-themes/pieces/neo/150/bp.png',
 };
 
 // ── CHESS.JS ─────────────────────────────────────────────────────────────────
@@ -509,7 +508,6 @@ const pieceImages = {};
 function loadPieceImages() {
   return Promise.all(Object.entries(PIECE_IMAGES).map(([k, src]) => new Promise(res => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
     img.src = src;
     img.onload = () => { pieceImages[k] = img; res(); };
     img.onerror = () => { console.warn('Failed to load piece image', k, src); res(); };
@@ -529,7 +527,7 @@ const SIZE   = SQ * 8;
 canvas.width  = SIZE;
 canvas.height = SIZE;
 
-const LIGHT = '#f0ede0', DARK = '#9e9080', SEL = 'rgba(200, 168, 75, 0.38)';
+const LIGHT = '#f6f7f1', DARK = '#2f5d3a', SEL = 'rgba(107, 179, 117, 0.28)';
 
 let chess = null, playerColor = 'w', thinking = false, gameOver = false;
 let startFen = '', dragging = null, selectedSquare = null, currentCardId = null;
@@ -573,9 +571,9 @@ function draw() {
   for (let i = 0; i < 8; i++) {
     const rLabel = (playerColor === 'w' ? 8 - i : i + 1).toString();
     const fLabel = String.fromCharCode(playerColor === 'w' ? 97 + i : 97 + 7 - i);
-    ctx.fillStyle = i % 2 === 0 ? '#9e9080' : '#f0ede0';
+    ctx.fillStyle = i % 2 === 0 ? DARK : LIGHT;
     ctx.fillText(rLabel, 3, i * SQ + 14);
-    ctx.fillStyle = i % 2 === 0 ? '#f0ede0' : '#9e9080';
+    ctx.fillStyle = i % 2 === 0 ? LIGHT : DARK;
     ctx.fillText(fLabel, i * SQ + SQ - 11, SIZE - 3);
   }
 
@@ -1142,41 +1140,11 @@ async function buildSolution(pgn, cardFen) {
   const replay = new Chess();
   if (replayStart) replay.load(replayStart);
 
-  // Normalise FEN to piece-placement + turn only (ignore clocks/move counters)
-  // so we can match the card FEN against any point in the PGN replay.
-  function fenKey(fen) { return fen.split(' ').slice(0, 2).join(' '); }
-
-  const cardKey  = fenKey(cardFen);
-  const startKey = fenKey(replay.fen());
-
-  // If the PGN already starts at the card FEN, collect all moves.
-  // Otherwise fast-forward through the PGN until we reach the card FEN,
-  // then collect only the moves from that point onward.
   solMoves = [];
-  let collecting = (startKey === cardKey);
-
   for (const m of history) {
     const result = replay.move(m.san);
-    if (!result) break;
-    if (!collecting && fenKey(replay.fen()) === cardKey) {
-      // Just arrived at the card position — next moves are the solution
-      collecting = true;
-      continue;
-    }
-    if (collecting) {
-      solMoves.push({ san: result.san, from: result.from, to: result.to, fen: replay.fen() });
-    }
-  }
-
-  // Fallback: card FEN not found in PGN — show all moves rather than nothing
-  if (!solMoves.length && !collecting) {
-    const replay2 = new Chess();
-    if (replayStart) replay2.load(replayStart);
-    for (const m of history) {
-      const result = replay2.move(m.san);
-      if (!result) break;
-      solMoves.push({ san: result.san, from: result.from, to: result.to, fen: replay2.fen() });
-    }
+    if (!result) break;                             // stop on first illegal move
+    solMoves.push({ san: result.san, from: result.from, to: result.to, fen: replay.fen() });
   }
 
   panel.classList.add('visible');
@@ -1190,13 +1158,9 @@ async function renderSolBoards() {
   const sz  = 168;                                  // display size in CSS px
 
   solMoves.forEach((m, i) => {
-    // Derive real move number + side from the FEN recorded after each move
-    const fenParts  = m.fen.split(' ');
-    const fullmove  = parseInt(fenParts[5]) || 1;
-    const turnAfter = fenParts[1]; // 'w' means black just moved, 'b' means white just moved
-    const wasBlack  = turnAfter === 'w';
-    const dispNum   = wasBlack ? Math.max(1, fullmove - 1) : fullmove;
-    const label     = `${dispNum}${wasBlack ? '…' : '.'} ${m.san}`;
+    const moveNum = Math.floor(i / 2) + 1;
+    const isBlack = i % 2 === 1;
+    const label   = `${moveNum}${isBlack ? '…' : '.'} ${m.san}`;
 
     const card = document.createElement('div');
     card.className = 'sol-board-card';
