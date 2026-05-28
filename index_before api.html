@@ -353,90 +353,6 @@
   }
   .sol-move-label .sol-san { color: var(--accent); font-weight: 700; }
 
-  /* ── AI EXPLANATION BOX ── */
-  #ai-explain-wrap {
-    width: 100%;
-    display: none;
-  }
-  #ai-explain-wrap.visible { display: block; }
-  .ai-explain-box {
-    background: linear-gradient(135deg, rgba(121,192,255,0.06), rgba(200,169,110,0.06));
-    border: 1px solid rgba(121,192,255,0.25);
-    border-radius: 10px;
-    padding: 13px 16px 14px;
-    position: relative;
-    overflow: hidden;
-  }
-  .ai-explain-box::before {
-    content: '';
-    position: absolute; top: 0; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, #79c0ff, #c8a96e, #56d364);
-    opacity: 0.7;
-  }
-  .ai-explain-header {
-    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
-  }
-  .ai-explain-icon { font-size: 15px; }
-  .ai-explain-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 11px; color: #79c0ff;
-    text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
-  }
-  .ai-explain-move-badge {
-    margin-left: auto;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; color: #c8a96e;
-    background: rgba(200,169,110,0.12); border: 1px solid rgba(200,169,110,0.3);
-    border-radius: 4px; padding: 1px 7px;
-  }
-  .ai-explain-text {
-    font-size: 12px; color: #d8e6f0; line-height: 1.75;
-    font-style: italic;
-  }
-  .ai-explain-loading {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 11px; color: #8db4d4; font-style: italic;
-  }
-  .ai-spinner {
-    width: 14px; height: 14px;
-    border: 2px solid rgba(121,192,255,0.2);
-    border-top-color: #79c0ff;
-    border-radius: 50%;
-    animation: ai-spin 0.8s linear infinite;
-    flex-shrink: 0;
-  }
-  @keyframes ai-spin { to { transform: rotate(360deg); } }
-
-  /* ── AI API KEY ROW ── */
-  .ai-key-row {
-    display: flex; align-items: center; gap: 10px;
-    flex-wrap: wrap;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 9px;
-    padding: 10px 14px;
-  }
-  .ai-key-label {
-    font-size: 11px; font-weight: 700; color: #79c0ff;
-    text-transform: uppercase; letter-spacing: 0.07em;
-    white-space: nowrap; flex-shrink: 0;
-  }
-  .ai-key-input {
-    flex: 1; min-width: 160px;
-    padding: 6px 10px;
-    border-radius: 6px; border: 1px solid var(--border);
-    background: var(--bg); color: var(--text);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px; outline: none;
-    transition: border-color 0.2s;
-  }
-  .ai-key-input:focus { border-color: #79c0ff; }
-  .ai-key-sub {
-    font-size: 10px; color: #8db4d4; width: 100%; margin-top: 2px;
-  }
-  .ai-key-sub a { color: #79c0ff; text-decoration: none; }
-  .ai-key-sub a:hover { text-decoration: underline; }
-
   /* ── HINT TOGGLE ── */
   .hint-toggle-row {
     display: flex;
@@ -540,16 +456,6 @@
     </select>
   </div>
 
-  <!-- ── AI COACH API KEY ── -->
-  <div class="ai-key-row">
-    <span class="ai-key-label">🤖 AI Coach</span>
-    <input class="ai-key-input" id="geminiKeyInput" type="password"
-      placeholder="Paste Gemini API key…" autocomplete="off">
-    <div class="ai-key-sub">
-      Free key at <a href="https://aistudio.google.com/" target="_blank">aistudio.google.com</a> — explains every move in 2–3 sentences.
-    </div>
-  </div>
-
   <!-- ── USE HINT TOGGLE ── -->
   <div class="hint-toggle-row">
     <label class="hint-toggle-label">
@@ -579,23 +485,6 @@
     </div>
     <div id="status">Press Endgame Flashcard to start practising</div>
     <div id="active-badge"></div>
-  </div>
-
-  <!-- ── AI MOVE EXPLANATION ── -->
-  <div id="ai-explain-wrap">
-    <div class="ai-explain-box">
-      <div class="ai-explain-header">
-        <span class="ai-explain-icon">🧠</span>
-        <span class="ai-explain-title">Move Explanation</span>
-        <span class="ai-explain-move-badge" id="aiMoveBadge"></span>
-      </div>
-      <div id="aiExplainContent">
-        <div class="ai-explain-loading">
-          <div class="ai-spinner"></div>
-          <span>Analysing the move…</span>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- ── SOLUTION PANEL ── -->
@@ -677,69 +566,6 @@ const PIECE_IMAGES = {
   bN: _CB + 'bN.svg',
   bP: _CB + 'bP.svg',
 };
-
-// ── GEMINI AI COACH ──────────────────────────────────────────────────────────
-const GEMINI_LS_KEY = 'chessGeminiKey';
-let geminiKey = localStorage.getItem(GEMINI_LS_KEY) || '';
-
-function initGeminiKeyInput() {
-  const inp = document.getElementById('geminiKeyInput');
-  if (geminiKey) inp.value = geminiKey;
-  inp.addEventListener('input', () => {
-    geminiKey = inp.value.trim();
-    if (geminiKey) localStorage.setItem(GEMINI_LS_KEY, geminiKey);
-    else localStorage.removeItem(GEMINI_LS_KEY);
-  });
-}
-initGeminiKeyInput();
-
-async function fetchMoveExplanation(fenBefore, san, movingColor, isEngine) {
-  const wrap = document.getElementById('ai-explain-wrap');
-  const content = document.getElementById('aiExplainContent');
-  const badge = document.getElementById('aiMoveBadge');
-
-  if (!geminiKey) return;
-
-  const side = movingColor === 'w' ? 'White' : 'Black';
-  const who  = isEngine ? `Engine (${side})` : `You (${side})`;
-  badge.textContent = `${who}: ${san}`;
-
-  // Show loading
-  wrap.classList.add('visible');
-  content.innerHTML = `<div class="ai-explain-loading"><div class="ai-spinner"></div><span>Analysing ${san}…</span></div>`;
-
-  const prompt =
-    `You are a concise chess endgame coach. ` +
-    `The position FEN before the move was: "${fenBefore}". ` +
-    `${side} just played ${san}. ` +
-    `In exactly 2-3 sentences, explain the key idea or purpose of this move. ` +
-    `Focus on the endgame concept (king activity, pawn promotion, rook technique, opposition, zugzwang, etc.). ` +
-    `Be direct and educational. No preamble.`;
-
-  try {
-    const resp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-      }
-    );
-    const data = await resp.json();
-    if (data.error) {
-      content.innerHTML = `<div class="ai-explain-text" style="color:#ff7b72;font-style:normal">⚠ ${data.error.message || 'API error'}</div>`;
-      return;
-    }
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-    if (text) {
-      content.innerHTML = `<div class="ai-explain-text">${text.replace(/\n/g, '<br>')}</div>`;
-    } else {
-      content.innerHTML = `<div class="ai-explain-text" style="color:#b0bec5">No explanation returned.</div>`;
-    }
-  } catch (err) {
-    content.innerHTML = `<div class="ai-explain-text" style="color:#ff7b72;font-style:normal">⚠ Network error — check your API key.</div>`;
-  }
-}
 
 // ── CHESS.JS ─────────────────────────────────────────────────────────────────
 const CHESS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js';
@@ -1180,15 +1006,11 @@ async function doEngineMove() {
     const from = bestmove.slice(0, 2);
     const to = bestmove.slice(2, 4);
     const promotion = bestmove.length > 4 ? bestmove[4] : 'q';
-    const fenBeforeEngine = chess.fen();
     const move = chess.move({ from, to, promotion });
     if (move) lastMove = { from, to };
     // Reset MultiPV to 1 for normal engine moves
     engine.postMessage('setoption name MultiPV value 1');
-    if (move) {
-      draw();
-      fetchMoveExplanation(fenBeforeEngine, move.san, move.color, true);
-    }
+    if (move) draw();
     checkEnd();
     // After engine plays, show hint for player's new position
     if (!gameOver && !chess.game_over()) {
@@ -1270,13 +1092,11 @@ function endDrag(e) {
   const toSq = xyToSq(px, py), fromSq = dragging.square;
   dragging = null;
   if (toSq && toSq !== fromSq) {
-    const fenBefore = chess.fen();
     const move = chess.move({ from: fromSq, to: toSq, promotion: 'q' });
     if (move) {
       lastMove = { from: fromSq, to: toSq };
       clearHint();
       selectedSquare = null; draw();
-      fetchMoveExplanation(fenBefore, move.san, move.color, false);
       if (!chess.game_over()) doEngineMove(); else checkEnd();
       return;
     }
@@ -1300,9 +1120,6 @@ async function loadPosition(fen, cardId = null) {
   chess = g; startFen = fen; playerColor = chess.turn();
   gameOver = false; thinking = false; selectedSquare = null; dragging = null; lastMove = null; hintArrows = []; hintEval = null;
   currentCardId = cardId;
-
-  // Reset AI explanation
-  document.getElementById('ai-explain-wrap').classList.remove('visible');
 
   const badge = document.getElementById('active-badge');
   if (cardId) {
