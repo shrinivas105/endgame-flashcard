@@ -544,9 +544,9 @@
   <div class="ai-key-row">
     <span class="ai-key-label">🤖 AI Coach</span>
     <input class="ai-key-input" id="geminiKeyInput" type="password"
-      placeholder="Paste Gemini API key…" autocomplete="off">
+      placeholder="Paste Groq API key…" autocomplete="off">
     <div class="ai-key-sub">
-      Free key at <a href="https://aistudio.google.com/" target="_blank">aistudio.google.com</a> — explains every move in 2–3 sentences.
+      Free key at <a href="https://console.groq.com/" target="_blank">console.groq.com</a> — explains every move in 2–3 sentences.
     </div>
   </div>
 
@@ -678,8 +678,8 @@ const PIECE_IMAGES = {
   bP: _CB + 'bP.svg',
 };
 
-// ── GEMINI AI COACH ──────────────────────────────────────────────────────────
-const GEMINI_LS_KEY = 'chessGeminiKey';
+// ── GROQ AI COACH ────────────────────────────────────────────────────────────
+const GEMINI_LS_KEY = 'chessGroqKey';
 let geminiKey = localStorage.getItem(GEMINI_LS_KEY) || '';
 
 function initGeminiKeyInput() {
@@ -693,7 +693,8 @@ function initGeminiKeyInput() {
 }
 initGeminiKeyInput();
 
-async function fetchMoveExplanation(fenBefore, san, movingColor, isEngine) {
+
+async function fetchMoveExplanation(fenBefore, san, movingColor, isEngine, fromSq, toSq) {
   const wrap = document.getElementById('ai-explain-wrap');
   const content = document.getElementById('aiExplainContent');
   const badge = document.getElementById('aiMoveBadge');
@@ -701,28 +702,36 @@ async function fetchMoveExplanation(fenBefore, san, movingColor, isEngine) {
   if (!geminiKey) return;
 
   const side = movingColor === 'w' ? 'White' : 'Black';
-  const who  = isEngine ? `Engine (${side})` : `You (${side})`;
-  badge.textContent = `${who}: ${san}`;
+  badge.textContent = `💡 Hint — ${side}: ${san}`;
 
   // Show loading
   wrap.classList.add('visible');
   content.innerHTML = `<div class="ai-explain-loading"><div class="ai-spinner"></div><span>Analysing ${san}…</span></div>`;
 
   const prompt =
-    `You are a concise chess endgame coach. ` +
-    `The position FEN before the move was: "${fenBefore}". ` +
-    `${side} just played ${san}. ` +
-    `In exactly 2-3 sentences, explain the key idea or purpose of this move. ` +
-    `Focus on the endgame concept (king activity, pawn promotion, rook technique, opposition, zugzwang, etc.). ` +
-    `Be direct and educational. No preamble.`;
+    `You are a grandmaster-level chess endgame coach. ` +
+    `FEN (rank 8 to rank 1, a-h left to right, uppercase=White, lowercase=Black): "${fenBefore}". ` +
+    `It is ${side}'s turn. Best move: ${san} (${fromSq} → ${toSq}). ` +
+    `\n\nRespond in this exact format:` +
+    `\n**Technique:** [name the specific endgame technique or rule — e.g. Opposition, Lucena, Philidor, Triangulation, Outflanking, Rule of the Square, Rook behind passed pawn, Cutting off the king, Shouldering, Zugzwang, Key squares, Pawn breakthrough, etc.]` +
+    `\n**Why:** [1-2 sentences — what does this move achieve concretely? Name the square, piece, or resulting structure. No filler.]` +
+    `\n**Rule:** [State the underlying endgame principle or rule of thumb a student should remember — e.g. "In K+P endings, the attacking king must reach the key squares in front of the pawn."]`;
 
   try {
     const resp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+      `https://api.groq.com/openai/v1/chat/completions`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${geminiKey}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 300,
+          temperature: 0.5
+        })
       }
     );
     const data = await resp.json();
@@ -730,9 +739,12 @@ async function fetchMoveExplanation(fenBefore, san, movingColor, isEngine) {
       content.innerHTML = `<div class="ai-explain-text" style="color:#ff7b72;font-style:normal">⚠ ${data.error.message || 'API error'}</div>`;
       return;
     }
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    const text = data.choices?.[0]?.message?.content?.trim() || '';
     if (text) {
-      content.innerHTML = `<div class="ai-explain-text">${text.replace(/\n/g, '<br>')}</div>`;
+      const rendered = text
+        .replace(/\n/g, '<br>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#f0f6fc">$1</strong>');
+      content.innerHTML = `<div class="ai-explain-text">${rendered}</div>`;
     } else {
       content.innerHTML = `<div class="ai-explain-text" style="color:#b0bec5">No explanation returned.</div>`;
     }
@@ -1061,7 +1073,25 @@ function handleEngineMessage(event) {
 // Separate search: MultiPV 3, short time, parses info lines for eval + top moves
 let hintMoveResolver = null;
 
-function requestHint() {
+// ── GROQ RATE LIMIT: max 30 req/min ─────────────────────────────────────────
+let groqCallTimestamps = [];
+function groqRateLimitOk() {
+  const now = Date.now();
+  groqCallTimestamps = groqCallTimestamps.filter(t => now - t < 60000);
+  if (groqCallTimestamps.length >= 28) return false;  // stay safely under 30/min
+  groqCallTimestamps.push(now);
+  return true;
+}
+
+function hintAiCallback({ topMove, fen }) {
+  if (!geminiKey || !groqRateLimitOk()) return;
+  const tempChess = new Chess();
+  tempChess.load(fen);
+  const moveObj = tempChess.move({ from: topMove.from, to: topMove.to, promotion: 'q' });
+  if (moveObj) fetchMoveExplanation(fen, moveObj.san, moveObj.color, false, topMove.from, topMove.to);
+}
+
+function requestHint(onTopMoveReady) {
   if (!document.getElementById('useHintCheck').checked) return;
   if (!chess || chess.game_over() || gameOver) return;
   if (hintSearchActive) return;
@@ -1115,13 +1145,18 @@ function requestHint() {
         hintEval = collected[0]?.evalStr || null;
         updateEvalDisplay();
         draw();
+
+        // Fire callback with top move — only provided on player-move path
+        if (onTopMoveReady && collected[0]) {
+          onTopMoveReady({ topMove: collected[0], fen: hintFen });
+        }
       }
     }
   };
 
-  const fen = chess.fen();
+  const hintFen = chess.fen();
   engine.postMessage('setoption name MultiPV value 3');
-  engine.postMessage('position fen ' + fen);
+  engine.postMessage('position fen ' + hintFen);
   engine.postMessage('go movetime 600');
 }
 
@@ -1129,6 +1164,7 @@ function clearHint() {
   hintArrows = [];
   hintEval   = null;
   updateEvalDisplay();
+  document.getElementById('ai-explain-wrap').classList.remove('visible');
   if (chess) draw();
 }
 
@@ -1152,7 +1188,7 @@ function updateEvalDisplay() {
   }
 }
 
-async function doEngineMove() {
+async function doEngineMove(showAiHint = false) {
   if (gameOver || thinking || engineSearchActive) return;
   thinking = true;
   engineSearchActive = true;
@@ -1187,13 +1223,17 @@ async function doEngineMove() {
     engine.postMessage('setoption name MultiPV value 1');
     if (move) {
       draw();
-      fetchMoveExplanation(fenBeforeEngine, move.san, move.color, true);
     }
     checkEnd();
     // After engine plays, show hint for player's new position
     if (!gameOver && !chess.game_over()) {
       await initEngine();
-      requestHint();
+      if (showAiHint) {
+        // Player just moved — explain the top hint move via AI (rate-limited)
+        requestHint(hintAiCallback);
+      } else {
+        requestHint();  // no AI call — engine just moved, player hasn't acted yet
+      }
     }
   } catch (err) {
     console.error('Stockfish error', err);
@@ -1276,8 +1316,11 @@ function endDrag(e) {
       lastMove = { from: fromSq, to: toSq };
       clearHint();
       selectedSquare = null; draw();
-      fetchMoveExplanation(fenBefore, move.san, move.color, false);
-      if (!chess.game_over()) doEngineMove(); else checkEnd();
+      if (!chess.game_over()) {
+        doEngineMove(true);  // true = after engine plays, request hint with AI explanation
+      } else {
+        checkEnd();
+      }
       return;
     }
   }
@@ -1313,7 +1356,7 @@ async function loadPosition(fen, cardId = null) {
   }
   document.getElementById('result-overlay').classList.remove('show');
   draw(); checkEnd();
-  if (document.getElementById('useHintCheck').checked) initEngine().then(() => requestHint());
+  if (document.getElementById('useHintCheck').checked) initEngine().then(() => requestHint(hintAiCallback));
 
   // Build solution panel from card's PGN
   const card = cardId ? getCards().find(c => c.id === cardId) : null;
@@ -1330,7 +1373,7 @@ document.getElementById('ovRetry').addEventListener('click', () => {
   gameOver = false; thinking = false; selectedSquare = null; dragging = null;
   document.getElementById('result-overlay').classList.remove('show');
   draw(); checkEnd();
-  if (document.getElementById('useHintCheck').checked) initEngine().then(() => requestHint());
+  if (document.getElementById('useHintCheck').checked) initEngine().then(() => requestHint(hintAiCallback));
 });
 document.getElementById('ovNext').addEventListener('click', practiceRandom);
 
@@ -1563,7 +1606,7 @@ function showToast(msg) {
 document.getElementById('useHintCheck').addEventListener('change', () => {
   if (document.getElementById('useHintCheck').checked) {
     if (chess && !chess.game_over() && !gameOver && !thinking) {
-      initEngine().then(() => requestHint());
+      initEngine().then(() => requestHint(hintAiCallback));
     }
   } else {
     clearHint();

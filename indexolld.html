@@ -12,14 +12,14 @@
     --bg: #0d1117;
     --surface: #161b22;
     --surface2: #1f2a38;
-    --border: #30363d;
+    --border: #3d444d;
     --accent: #f0f6fc;
-    --accent2: #8b949e;
+    --accent2: #79c0ff;
     --win: #56d364;
     --loss: #ff7b72;
     --draw: #79c0ff;
-    --text: #c9d1d9;
-    --muted: #8b949e;
+    --text: #f0f6fc;
+    --muted: #b0bec5;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,7 +42,7 @@
     color: var(--accent);
     letter-spacing: 0.03em;
   }
-  header p { color: var(--muted); font-size: 11px; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.1em; }
+  header p { color: #adc8e6; font-size: 11px; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.1em; }
 
   /* ── LAYOUT ── */
   /* Vertical stacked layout for all screen sizes */
@@ -137,7 +137,7 @@
     resize: vertical;
   }
   .fen-input:focus { border-color: var(--accent2); }
-  .field-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
+  .field-label { font-size: 11px; color: #f0f6fc; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
 
   /* ── BOARD AREA ── */
   #board-wrap {
@@ -167,14 +167,14 @@
 
   #status {
     font-size: 13px;
-    color: var(--text);
+    color: #e6edf3;
     font-weight: 500;
     min-height: 20px;
     text-align: center;
   }
   #active-badge {
     font-size: 10px;
-    color: var(--muted);
+    color: #c8d8e8;
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 5px;
@@ -194,7 +194,7 @@
     margin-bottom: 12px;
     align-items: center;
   }
-  .fc-count { font-size: 11px; color: var(--muted); margin-left: auto; }
+  .fc-count { font-size: 11px; color: #c8d8e8; font-weight: 600; margin-left: auto; }
 
   .table-wrap {
     border: 1px solid var(--border);
@@ -242,7 +242,7 @@
   .r-none { background: var(--surface2); color: var(--muted); }
 
   .empty-state {
-    text-align: center; color: var(--muted);
+    text-align: center; color: #c8d8e8;
     padding: 36px 20px; font-size: 12px; line-height: 1.9;
   }
   .empty-state .ico { font-size: 30px; margin-bottom: 8px; }
@@ -259,7 +259,7 @@
   #result-overlay.show { display: flex; }
   .ov-icon { font-size: 52px; }
   .ov-title { font-family: 'Playfair Display', serif; font-size: 28px; color: var(--accent); }
-  .ov-sub   { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; }
+  .ov-sub   { font-size: 11px; color: #c8d8e8; letter-spacing: 0.08em; }
   .ov-btns  { display: flex; gap: 10px; }
 
   /* ── TOAST ── */
@@ -347,11 +347,177 @@
   .sol-move-label {
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
-    color: var(--accent2);
+    color: #c8d8e8;
     text-align: center;
     letter-spacing: 0.02em;
   }
   .sol-move-label .sol-san { color: var(--accent); font-weight: 700; }
+
+  /* ── AI EXPLANATION BOX ── */
+  #ai-explain-wrap {
+    width: 100%;
+    display: none;
+  }
+  #ai-explain-wrap.visible { display: block; }
+  .ai-explain-box {
+    background: linear-gradient(135deg, rgba(121,192,255,0.06), rgba(200,169,110,0.06));
+    border: 1px solid rgba(121,192,255,0.25);
+    border-radius: 10px;
+    padding: 13px 16px 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .ai-explain-box::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, #79c0ff, #c8a96e, #56d364);
+    opacity: 0.7;
+  }
+  .ai-explain-header {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  }
+  .ai-explain-icon { font-size: 15px; }
+  .ai-explain-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 11px; color: #79c0ff;
+    text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
+  }
+  .ai-explain-move-badge {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: #c8a96e;
+    background: rgba(200,169,110,0.12); border: 1px solid rgba(200,169,110,0.3);
+    border-radius: 4px; padding: 1px 7px;
+  }
+  .ai-explain-text {
+    font-size: 12px; color: #d8e6f0; line-height: 1.75;
+    font-style: italic;
+  }
+  .ai-explain-loading {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: #8db4d4; font-style: italic;
+  }
+  .ai-spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(121,192,255,0.2);
+    border-top-color: #79c0ff;
+    border-radius: 50%;
+    animation: ai-spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes ai-spin { to { transform: rotate(360deg); } }
+
+  /* ── AI API KEY ROW ── */
+  .ai-key-row {
+    display: flex; align-items: center; gap: 10px;
+    flex-wrap: wrap;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 10px 14px;
+  }
+  .ai-key-label {
+    font-size: 11px; font-weight: 700; color: #79c0ff;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    white-space: nowrap; flex-shrink: 0;
+  }
+  .ai-key-input {
+    flex: 1; min-width: 160px;
+    padding: 6px 10px;
+    border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .ai-key-input:focus { border-color: #79c0ff; }
+  .ai-key-sub {
+    font-size: 10px; color: #8db4d4; width: 100%; margin-top: 2px;
+  }
+  .ai-key-sub a { color: #79c0ff; text-decoration: none; }
+  .ai-key-sub a:hover { text-decoration: underline; }
+
+  /* ── HINT TOGGLE ── */
+  .hint-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 10px 14px;
+    flex-wrap: wrap;
+  }
+  .hint-toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    flex: 1;
+  }
+  .hint-toggle-label input[type="checkbox"] {
+    width: 17px; height: 17px;
+    accent-color: #56d364;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .hint-toggle-text {
+    font-size: 13px;
+    font-weight: 700;
+    color: #f0f6fc;
+    letter-spacing: 0.04em;
+  }
+  .hint-toggle-sub {
+    font-size: 10px;
+    color: #b0bec5;
+    letter-spacing: 0.02em;
+  }
+  #evalDisplay {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    min-width: 60px;
+    text-align: right;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+
+  /* ── CLEAN LAYOUT ── */
+  .engine-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .csv-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  #create-section { width: 100%; }
+  .btn-create-toggle {
+    background: rgba(126,184,201,0.13);
+    color: #79c0ff;
+    border: 1px dashed rgba(121,192,255,0.5);
+    font-size: 13px; font-weight: 700;
+    padding: 11px 22px; border-radius: 9px; width: 100%;
+    letter-spacing: 0.05em; cursor: pointer;
+    transition: filter 0.15s, background 0.15s;
+    font-family: 'Libre Baskerville', serif;
+  }
+  .btn-create-toggle:hover { filter: brightness(1.15); background: rgba(126,184,201,0.22); }
+  .btn-create-toggle.open {
+    background: rgba(126,184,201,0.22);
+    border-style: solid;
+  }
+  /* Keep table-wrap inside layout flow */
+  .layout > .table-wrap { width: 100%; overflow-x: auto; }
+
 </style>
 </head>
 <body>
@@ -363,58 +529,41 @@
 
 <div class="layout">
 
-  <!-- ── LEFT: LIBRARY ── -->
-  <div class="panel">
-    <div class="panel-title">
-      📚 Endgame Library
-    </div>
-    <div class="panel-body">
+  <!-- ── ENGINE STRENGTH ── -->
+  <div class="engine-row">
+    <label class="field-label" style="margin:0; white-space:nowrap;">Engine Strength</label>
+    <select id="engineStrengthSelect" class="fen-input" style="max-width:160px; padding:8px 10px;">
+      <option value="2000">2000</option>
+      <option value="2500">2500</option>
+      <option value="2800">2800</option>
+      <option value="3200" selected>3200</option>
+    </select>
+  </div>
 
-      <button class="btn btn-practice" id="practiceBtn">🎯 Practice Random</button>
-      <div style="margin-top: 12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <label class="field-label" style="margin:0; white-space:nowrap;">Engine Strength</label>
-        <select id="engineStrengthSelect" class="fen-input" style="max-width:150px; padding: 8px 10px;">
-          <option value="2000">2000</option>
-          <option value="2500">2500</option>
-          <option value="2800">2800</option>
-          <option value="3200" selected>3200</option>
-        </select>
-      </div>
-
-      <div style="height:12px"></div>
-
-      <div class="lib-toolbar">
-        <button class="btn btn-upload"   id="uploadBtn">📂 Upload CSV</button>
-        <button class="btn btn-download" id="downloadBtn">💾 Download CSV</button>
-        <input type="file" id="csvFileInput" accept=".csv" style="display:none">
-        <span class="fc-count" id="fcCount">0 positions</span>
-      </div>
-
-      <div class="table-wrap" id="tableWrap">
-        <div class="empty-state" id="emptyState">
-          <div class="ico">♟</div>
-          No positions yet.<br>Create a flashcard<br>or upload a CSV.
-        </div>
-        <table id="fcTable" style="display:none">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Name</th>
-              <th>Position</th>
-              <th>Result</th>
-              <th>Strength</th>
-              <th>Played</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="fcTbody"></tbody>
-        </table>
-      </div>
-
+  <!-- ── AI COACH API KEY ── -->
+  <div class="ai-key-row">
+    <span class="ai-key-label">🤖 AI Coach</span>
+    <input class="ai-key-input" id="geminiKeyInput" type="password"
+      placeholder="Paste Gemini API key…" autocomplete="off">
+    <div class="ai-key-sub">
+      Free key at <a href="https://aistudio.google.com/" target="_blank">aistudio.google.com</a> — explains every move in 2–3 sentences.
     </div>
   </div>
 
-  <!-- ── CENTER: BOARD ── -->
+  <!-- ── USE HINT TOGGLE ── -->
+  <div class="hint-toggle-row">
+    <label class="hint-toggle-label">
+      <input type="checkbox" id="useHintCheck">
+      <span class="hint-toggle-text">Use Hint</span>
+      <span class="hint-toggle-sub">Shows eval &amp; top 3 engine moves on board</span>
+    </label>
+    <div id="evalDisplay" style="display:none"></div>
+  </div>
+
+  <!-- ── FLASHCARD BUTTON ── -->
+  <button class="btn btn-practice" id="practiceBtn">♟ Endgame Flashcard</button>
+
+  <!-- ── BOARD ── -->
   <div id="board-wrap">
     <div id="board-container">
       <canvas id="board"></canvas>
@@ -423,52 +572,91 @@
         <div class="ov-title" id="ovTitle"></div>
         <div class="ov-sub"   id="ovSub"></div>
         <div class="ov-btns">
-          <button class="btn btn-secondary" id="ovRetry">↺ Retry</button>
-          <button class="btn btn-primary"   id="ovNext">Next →</button>
+          <button class="btn btn-secondary" id="ovRetry">&#x21BA; Retry</button>
+          <button class="btn btn-primary"   id="ovNext">Next &#x2192;</button>
         </div>
       </div>
     </div>
-    <div id="status">Create a flashcard or practice a saved endgame</div>
+    <div id="status">Press Endgame Flashcard to start practising</div>
     <div id="active-badge"></div>
+  </div>
+
+  <!-- ── AI MOVE EXPLANATION ── -->
+  <div id="ai-explain-wrap">
+    <div class="ai-explain-box">
+      <div class="ai-explain-header">
+        <span class="ai-explain-icon">🧠</span>
+        <span class="ai-explain-title">Move Explanation</span>
+        <span class="ai-explain-move-badge" id="aiMoveBadge"></span>
+      </div>
+      <div id="aiExplainContent">
+        <div class="ai-explain-loading">
+          <div class="ai-spinner"></div>
+          <span>Analysing the move…</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ── SOLUTION PANEL ── -->
   <div id="solution-panel">
     <div class="solution-header">
-      <span>📋 Solution</span>
-      <button class="btn-toggle-sol" id="solToggleBtn" onclick="toggleSolution()">👁 Show</button>
+      <span>&#x1F4CB; Solution</span>
+      <button class="btn-toggle-sol" id="solToggleBtn" onclick="toggleSolution()">&#x1F441; Show</button>
     </div>
     <div class="solution-body">
-      <div class="sol-hidden-msg" id="solHiddenMsg">Solution hidden — press Show to reveal</div>
+      <div class="sol-hidden-msg" id="solHiddenMsg">Solution hidden &mdash; press Show to reveal</div>
       <div class="sol-grid" id="solGrid" style="display:none"></div>
     </div>
   </div>
 
-  <!-- ── RIGHT: CREATE FLASHCARD ── -->
-  <div class="panel">
-    <div class="panel-title">✏ Create Flashcard</div>
-    <div class="panel-body">
-      <div class="field-label">Name</div>
-      <input id="nameInput" class="fen-input" placeholder="Example: Lucina endgame">
-      <div class="field-label" style="margin-top:12px;">FEN Position</div>
-      <textarea class="fen-input" id="fenInput" rows="4"
-        placeholder="Paste FEN string here…&#10;e.g. 8/8/8/4k3/8/8/4K3/4R3 w - - 0 1"></textarea>
-      <div class="field-label" style="margin-top:12px;">Solution PGN <span style="text-transform:none;letter-spacing:0;color:#555f69">(optional)</span></div>
-      <textarea class="fen-input" id="pgnInput" rows="4"
-        placeholder="Paste PGN moves here…&#10;e.g. 1. Ke2 Ke5 2. Re1+ Kd4 3. Rd1#"></textarea>
-      <div id="create-error"></div>
-      <button class="btn-save-fen" id="saveFlashcardBtn">＋ Save Flashcard</button>
-
-      <div class="hint-box">
-        <strong style="color:var(--text)">CSV Format</strong><br>
-        id, name, fen, last_result, last_strength, last_played<br>
-        <span>abc1,"Lucina endgame","8/8/... w - - 0 1",win,2800,2025-05-23 10:30</span>
+  <!-- ── CREATE FLASHCARD (collapsed) ── -->
+  <div id="create-section">
+    <button class="btn btn-create-toggle" id="createToggleBtn" onclick="toggleCreateForm()">&#x270F; Create Flashcard</button>
+    <div id="create-form" style="display:none">
+      <div class="panel" style="margin-top:10px;">
+        <div class="panel-body">
+          <div class="field-label">Name</div>
+          <input id="nameInput" class="fen-input" placeholder="Example: Lucena endgame">
+          <div class="field-label" style="margin-top:12px;">FEN Position</div>
+          <textarea class="fen-input" id="fenInput" rows="3"
+            placeholder="Paste FEN string here&#x2026;&#10;e.g. 8/8/8/4k3/8/8/4K3/4R3 w - - 0 1"></textarea>
+          <div class="field-label" style="margin-top:12px;">Solution PGN <span style="text-transform:none;letter-spacing:0;color:#8db4d4">(optional)</span></div>
+          <textarea class="fen-input" id="pgnInput" rows="3"
+            placeholder="Paste PGN moves here&#x2026;&#10;e.g. 1. Ke2 Ke5 2. Re1+ Kd4 3. Rd1#"></textarea>
+          <div id="create-error"></div>
+          <button class="btn-save-fen" id="saveFlashcardBtn">&#xFF0B; Save Flashcard</button>
+        </div>
       </div>
     </div>
   </div>
 
-</div>
+  <!-- ── CSV UPLOAD / DOWNLOAD ── -->
+  <div class="csv-row">
+    <button class="btn btn-upload"   id="uploadBtn">&#x1F4C2; Upload CSV</button>
+    <button class="btn btn-download" id="downloadBtn">&#x1F4BE; Download CSV</button>
+    <input type="file" id="csvFileInput" accept=".csv" style="display:none">
+    <span class="fc-count" id="fcCount">0 positions</span>
+  </div>
 
+  <!-- ── LIBRARY TABLE (managed by JS) ── -->
+  <div class="table-wrap" id="tableWrap" style="display:none">
+    <div class="empty-state" id="emptyState" style="display:none">
+      <div class="ico">&#x265F;</div>
+      No positions yet.<br>Create a flashcard or upload a CSV.
+    </div>
+    <table id="fcTable" style="display:none">
+      <thead>
+        <tr>
+          <th>#</th><th>Name</th><th>Position</th>
+          <th>Result</th><th>Strength</th><th>Played</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="fcTbody"></tbody>
+    </table>
+  </div>
+
+</div>
 <div id="toast"></div>
 
 <!-- ══ SCRIPTS ══════════════════════════════════════════════════════════════ -->
@@ -489,6 +677,69 @@ const PIECE_IMAGES = {
   bN: _CB + 'bN.svg',
   bP: _CB + 'bP.svg',
 };
+
+// ── GEMINI AI COACH ──────────────────────────────────────────────────────────
+const GEMINI_LS_KEY = 'chessGeminiKey';
+let geminiKey = localStorage.getItem(GEMINI_LS_KEY) || '';
+
+function initGeminiKeyInput() {
+  const inp = document.getElementById('geminiKeyInput');
+  if (geminiKey) inp.value = geminiKey;
+  inp.addEventListener('input', () => {
+    geminiKey = inp.value.trim();
+    if (geminiKey) localStorage.setItem(GEMINI_LS_KEY, geminiKey);
+    else localStorage.removeItem(GEMINI_LS_KEY);
+  });
+}
+initGeminiKeyInput();
+
+async function fetchMoveExplanation(fenBefore, san, movingColor, isEngine) {
+  const wrap = document.getElementById('ai-explain-wrap');
+  const content = document.getElementById('aiExplainContent');
+  const badge = document.getElementById('aiMoveBadge');
+
+  if (!geminiKey) return;
+
+  const side = movingColor === 'w' ? 'White' : 'Black';
+  const who  = isEngine ? `Engine (${side})` : `You (${side})`;
+  badge.textContent = `${who}: ${san}`;
+
+  // Show loading
+  wrap.classList.add('visible');
+  content.innerHTML = `<div class="ai-explain-loading"><div class="ai-spinner"></div><span>Analysing ${san}…</span></div>`;
+
+  const prompt =
+    `You are a concise chess endgame coach. ` +
+    `The position FEN before the move was: "${fenBefore}". ` +
+    `${side} just played ${san}. ` +
+    `In exactly 2-3 sentences, explain the key idea or purpose of this move. ` +
+    `Focus on the endgame concept (king activity, pawn promotion, rook technique, opposition, zugzwang, etc.). ` +
+    `Be direct and educational. No preamble.`;
+
+  try {
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      }
+    );
+    const data = await resp.json();
+    if (data.error) {
+      content.innerHTML = `<div class="ai-explain-text" style="color:#ff7b72;font-style:normal">⚠ ${data.error.message || 'API error'}</div>`;
+      return;
+    }
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    if (text) {
+      content.innerHTML = `<div class="ai-explain-text">${text.replace(/\n/g, '<br>')}</div>`;
+    } else {
+      content.innerHTML = `<div class="ai-explain-text" style="color:#b0bec5">No explanation returned.</div>`;
+    }
+  } catch (err) {
+    content.innerHTML = `<div class="ai-explain-text" style="color:#ff7b72;font-style:normal">⚠ Network error — check your API key.</div>`;
+  }
+}
 
 // ── CHESS.JS ─────────────────────────────────────────────────────────────────
 const CHESS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js';
@@ -556,6 +807,9 @@ const LIGHT = '#f0ede0', DARK = '#9e9080', SEL = 'rgba(200, 168, 75, 0.38)';
 let chess = null, playerColor = 'w', thinking = false, gameOver = false;
 let startFen = '', dragging = null, selectedSquare = null, currentCardId = null;
 let lastMove = null;  // { from, to } — highlighted after every move
+let hintArrows = [];  // [{ from, to, rank }] — top engine moves when hint on
+let hintEval   = null; // string like '+1.3' or 'M4'
+let hintSearchActive = false;
 
 function sqToColRow(sq) {
   const file = sq.charCodeAt(0) - 97, rank = parseInt(sq[1]) - 1;
@@ -577,6 +831,31 @@ function getPos(e) {
   const cx = e.touches ? e.touches[0].clientX : e.clientX;
   const cy = e.touches ? e.touches[0].clientY : e.clientY;
   return { px: (cx - r.left) * sx, py: (cy - r.top) * sy };
+}
+
+// ── ARROW UTILITY ────────────────────────────────────────────────────────────
+function drawArrow(ctx, fc, fr, tc, tr, color, SQ) {
+  const x1 = fc * SQ + SQ / 2, y1 = fr * SQ + SQ / 2;
+  const x2 = tc * SQ + SQ / 2, y2 = tr * SQ + SQ / 2;
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 1) return;
+  const ux = dx / len, uy = dy / len;
+  const headLen = SQ * 0.38, headW = SQ * 0.22, shaftW = SQ * 0.13;
+  const ax = x1 + ux * SQ * 0.3,  ay = y1 + uy * SQ * 0.3;
+  const ex = x2 - ux * SQ * 0.18, ey = y2 - uy * SQ * 0.18;
+  const px = -uy, py = ux;
+  ctx.beginPath();
+  ctx.moveTo(ax + px * shaftW, ay + py * shaftW);
+  ctx.lineTo(ex - ux * headLen + px * shaftW, ey - uy * headLen + py * shaftW);
+  ctx.lineTo(ex - ux * headLen + px * headW,  ey - uy * headLen + py * headW);
+  ctx.lineTo(ex, ey);
+  ctx.lineTo(ex - ux * headLen - px * headW,  ey - uy * headLen - py * headW);
+  ctx.lineTo(ex - ux * headLen - px * shaftW, ey - uy * headLen - py * shaftW);
+  ctx.lineTo(ax - px * shaftW, ay - py * shaftW);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
 }
 
 // ── DRAW ─────────────────────────────────────────────────────────────────────
@@ -610,27 +889,7 @@ function draw() {
     ctx.fillRect(fc * SQ, fr * SQ, SQ, SQ);
     ctx.fillRect(tc * SQ, tr * SQ, SQ, SQ);
 
-    // Arrow from centre of from-square to centre of to-square
-    const x1 = fc * SQ + SQ / 2, y1 = fr * SQ + SQ / 2;
-    const x2 = tc * SQ + SQ / 2, y2 = tr * SQ + SQ / 2;
-    const dx = x2 - x1, dy = y2 - y1;
-    const len = Math.sqrt(dx * dx + dy * dy);
-    const ux = dx / len, uy = dy / len;
-    const headLen = SQ * 0.38, headW = SQ * 0.22, shaftW = SQ * 0.13;
-    const ax = x1 + ux * SQ * 0.3,  ay = y1 + uy * SQ * 0.3;
-    const ex = x2 - ux * SQ * 0.18, ey = y2 - uy * SQ * 0.18;
-    const px = -uy, py = ux;
-    ctx.beginPath();
-    ctx.moveTo(ax + px * shaftW, ay + py * shaftW);
-    ctx.lineTo(ex - ux * headLen + px * shaftW, ey - uy * headLen + py * shaftW);
-    ctx.lineTo(ex - ux * headLen + px * headW,  ey - uy * headLen + py * headW);
-    ctx.lineTo(ex, ey);
-    ctx.lineTo(ex - ux * headLen - px * headW,  ey - uy * headLen - py * headW);
-    ctx.lineTo(ex - ux * headLen - px * shaftW, ey - uy * headLen - py * shaftW);
-    ctx.lineTo(ax - px * shaftW, ay - py * shaftW);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(180, 130, 20, 0.75)';
-    ctx.fill();
+    drawArrow(ctx, fc, fr, tc, tr, 'rgba(180, 130, 20, 0.75)', SQ);
   }
 
   if (selectedSquare) {
@@ -661,6 +920,46 @@ function draw() {
   if (dragging) {
     const img = pieceImages[dragging.key];
     if (img) ctx.drawImage(img, dragging.x - SQ / 2, dragging.y - SQ / 2, SQ, SQ);
+  }
+
+  // ── Hint arrows (drawn on top of pieces) ───────────────────────────────────
+  if (document.getElementById('useHintCheck').checked && hintArrows.length) {
+    const HINT_COLORS = [
+      'rgba(86, 211, 100, 0.88)',   // #1 — green  (best)
+      'rgba(99, 179, 255, 0.82)',   // #2 — blue
+      'rgba(255, 100, 90,  0.78)',  // #3 — red
+    ];
+    const HINT_LABELS = ['#1', '#2', '#3'];
+
+    hintArrows.forEach(({ from, to, rank }) => {
+      const { col: fc, row: fr } = sqToColRow(from);
+      const { col: tc, row: tr } = sqToColRow(to);
+      const color = HINT_COLORS[rank] || HINT_COLORS[2];
+
+      drawArrow(ctx, fc, fr, tc, tr, color, SQ);
+
+      // Rank badge at arrowhead centre
+      const bx = tc * SQ + SQ / 2;
+      const by = tr * SQ + SQ / 2;
+      const br = SQ * 0.22;
+
+      ctx.beginPath();
+      ctx.arc(bx, by, br, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+      ctx.stroke();
+
+      const fs = Math.max(8, Math.floor(SQ * 0.20));
+      ctx.font = `bold ${fs}px JetBrains Mono,monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#111';
+      ctx.fillText(HINT_LABELS[rank], bx, by);
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+    });
   }
 }
 
@@ -758,6 +1057,101 @@ function handleEngineMessage(event) {
   }
 }
 
+// ── HINT ENGINE ──────────────────────────────────────────────────────────────
+// Separate search: MultiPV 3, short time, parses info lines for eval + top moves
+let hintMoveResolver = null;
+
+function requestHint() {
+  if (!document.getElementById('useHintCheck').checked) return;
+  if (!chess || chess.game_over() || gameOver) return;
+  if (hintSearchActive) return;
+  hintSearchActive = true;
+
+  // Collect top-3 moves from multipv info lines
+  const collected = {};  // pvIndex -> { from, to, eval }
+
+  const origHandler = engine.onmessage;
+  engine.onmessage = (event) => {
+    // Also forward to main handler so bestmove for engine moves still works
+    handleEngineMessage(event);
+
+    const lines = event.data?.toString?.().split('\n') || [];
+    for (const line of lines) {
+      const d = line.trim();
+
+      // Parse: info depth .. score cp/mate .. multipv N .. pv e2e4 ...
+      if (d.startsWith('info') && d.includes('multipv') && d.includes(' pv ')) {
+        const pvMatch    = d.match(/multipv (\d+)/);
+        const pvMovMatch = d.match(/ pv ([a-h][1-8])([a-h][1-8])/);
+        const cpMatch    = d.match(/score cp (-?\d+)/);
+        const mateMatch  = d.match(/score mate (-?\d+)/);
+        if (!pvMatch || !pvMovMatch) continue;
+        const pvIdx = parseInt(pvMatch[1]) - 1;  // 0-based rank
+        const from  = pvMovMatch[1], to = pvMovMatch[2];
+        let evalStr;
+        if (mateMatch) {
+          const m = parseInt(mateMatch[1]);
+          evalStr = (m > 0 ? '+' : '') + 'M' + Math.abs(m);
+        } else if (cpMatch) {
+          const cp  = parseInt(cpMatch[1]);
+          const val = cp / 100;
+          // Flip sign if it's Black's turn (eval always from White's perspective in SF)
+          const oriented = chess.turn() === 'b' ? -val : val;
+          evalStr = (oriented >= 0 ? '+' : '') + oriented.toFixed(1);
+        }
+        collected[pvIdx] = { from, to, evalStr };
+      }
+
+      if (d.startsWith('bestmove')) {
+        hintSearchActive = false;
+        engine.onmessage = origHandler;  // restore
+
+        // Build arrows from best 3
+        hintArrows = [];
+        for (let i = 0; i < 3; i++) {
+          if (collected[i]) hintArrows.push({ from: collected[i].from, to: collected[i].to, rank: i });
+        }
+        // Eval from best move (multipv 1)
+        hintEval = collected[0]?.evalStr || null;
+        updateEvalDisplay();
+        draw();
+      }
+    }
+  };
+
+  const fen = chess.fen();
+  engine.postMessage('setoption name MultiPV value 3');
+  engine.postMessage('position fen ' + fen);
+  engine.postMessage('go movetime 600');
+}
+
+function clearHint() {
+  hintArrows = [];
+  hintEval   = null;
+  updateEvalDisplay();
+  if (chess) draw();
+}
+
+function updateEvalDisplay() {
+  const el = document.getElementById('evalDisplay');
+  if (!document.getElementById('useHintCheck').checked || !hintEval) {
+    el.style.display = 'none';
+    el.textContent = '';
+    return;
+  }
+  el.style.display = 'block';
+  el.textContent = hintEval;
+  // Color: green=advantage, red=disadvantage, grey=equal
+  const v = parseFloat(hintEval.replace('M', '999').replace('+', ''));
+  if (hintEval.includes('M')) {
+    el.style.color = v > 0 ? '#56d364' : '#ff7b72';
+  } else if (Math.abs(v) < 0.3) {
+    el.style.color = '#c8d8e8';
+  } else {
+    el.style.color = v > 0 ? '#56d364' : '#ff7b72';
+  }
+}
+
 async function doEngineMove() {
   if (gameOver || thinking || engineSearchActive) return;
   thinking = true;
@@ -786,10 +1180,21 @@ async function doEngineMove() {
     const from = bestmove.slice(0, 2);
     const to = bestmove.slice(2, 4);
     const promotion = bestmove.length > 4 ? bestmove[4] : 'q';
+    const fenBeforeEngine = chess.fen();
     const move = chess.move({ from, to, promotion });
     if (move) lastMove = { from, to };
-    if (move) draw();
+    // Reset MultiPV to 1 for normal engine moves
+    engine.postMessage('setoption name MultiPV value 1');
+    if (move) {
+      draw();
+      fetchMoveExplanation(fenBeforeEngine, move.san, move.color, true);
+    }
     checkEnd();
+    // After engine plays, show hint for player's new position
+    if (!gameOver && !chess.game_over()) {
+      await initEngine();
+      requestHint();
+    }
   } catch (err) {
     console.error('Stockfish error', err);
     thinking = false;
@@ -865,10 +1270,13 @@ function endDrag(e) {
   const toSq = xyToSq(px, py), fromSq = dragging.square;
   dragging = null;
   if (toSq && toSq !== fromSq) {
+    const fenBefore = chess.fen();
     const move = chess.move({ from: fromSq, to: toSq, promotion: 'q' });
     if (move) {
       lastMove = { from: fromSq, to: toSq };
+      clearHint();
       selectedSquare = null; draw();
+      fetchMoveExplanation(fenBefore, move.san, move.color, false);
       if (!chess.game_over()) doEngineMove(); else checkEnd();
       return;
     }
@@ -890,8 +1298,11 @@ async function loadPosition(fen, cardId = null) {
   const g = new Chess();
   if (!g.load(fen)) return false;
   chess = g; startFen = fen; playerColor = chess.turn();
-  gameOver = false; thinking = false; selectedSquare = null; dragging = null; lastMove = null;
+  gameOver = false; thinking = false; selectedSquare = null; dragging = null; lastMove = null; hintArrows = []; hintEval = null;
   currentCardId = cardId;
+
+  // Reset AI explanation
+  document.getElementById('ai-explain-wrap').classList.remove('visible');
 
   const badge = document.getElementById('active-badge');
   if (cardId) {
@@ -902,6 +1313,7 @@ async function loadPosition(fen, cardId = null) {
   }
   document.getElementById('result-overlay').classList.remove('show');
   draw(); checkEnd();
+  if (document.getElementById('useHintCheck').checked) initEngine().then(() => requestHint());
 
   // Build solution panel from card's PGN
   const card = cardId ? getCards().find(c => c.id === cardId) : null;
@@ -918,6 +1330,7 @@ document.getElementById('ovRetry').addEventListener('click', () => {
   gameOver = false; thinking = false; selectedSquare = null; dragging = null;
   document.getElementById('result-overlay').classList.remove('show');
   draw(); checkEnd();
+  if (document.getElementById('useHintCheck').checked) initEngine().then(() => requestHint());
 });
 document.getElementById('ovNext').addEventListener('click', practiceRandom);
 
@@ -1009,22 +1422,28 @@ function renderTable(activeId = null) {
   const cards   = getCards();
   const emptyEl = document.getElementById('emptyState');
   const tableEl = document.getElementById('fcTable');
+  const wrapEl  = document.getElementById('tableWrap');
   const tbody   = document.getElementById('fcTbody');
   document.getElementById('fcCount').textContent = `${cards.length} position${cards.length !== 1 ? 's' : ''}`;
 
   if (!cards.length) {
-    emptyEl.style.display = 'block'; tableEl.style.display = 'none'; return;
+    wrapEl.style.display  = 'none';
+    emptyEl.style.display = 'none';
+    tableEl.style.display = 'none';
+    return;
   }
-  emptyEl.style.display = 'none'; tableEl.style.display = 'table';
+  wrapEl.style.display  = 'block';
+  emptyEl.style.display = 'none';
+  tableEl.style.display = 'table';
 
   tbody.innerHTML = cards.map((c, i) => `
     <tr id="row-${c.id}" class="${activeId === c.id ? 'active-row' : ''}">
-      <td style="color:var(--muted)">${i + 1}</td>
+      <td style="color:#b0bec5;font-weight:600">${i + 1}</td>
       <td class="fen-cell" title="${c.name || 'Unnamed'}">${c.name || 'Unnamed'}${c.pgn ? ' <span style="color:#79c0ff;font-size:9px;vertical-align:middle" title="Has solution PGN">📋</span>' : ''}</td>
       <td class="fen-cell" title="${c.fen}">${c.fen.split(' ')[0]}</td>
       <td>${badge(c.last_result)}</td>
-      <td style="color:var(--muted);font-size:10px;white-space:nowrap">${c.last_strength || '—'}</td>
-      <td style="color:var(--muted);font-size:10px;white-space:nowrap">${c.last_played}</td>
+      <td style="color:#c8d8e8;font-size:11px;white-space:nowrap">${c.last_strength || '—'}</td>
+      <td style="color:#c8d8e8;font-size:11px;white-space:nowrap">${c.last_played}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-ghost" title="Practice" onclick="practiceCard('${c.id}')">▶</button>
         <button class="btn btn-ghost" title="Delete"   onclick="deleteCard('${c.id}')">✕</button>
@@ -1141,6 +1560,16 @@ function showToast(msg) {
   clearTimeout(_tt); _tt = setTimeout(() => t.classList.remove('show'), 3000);
 }
 
+document.getElementById('useHintCheck').addEventListener('change', () => {
+  if (document.getElementById('useHintCheck').checked) {
+    if (chess && !chess.game_over() && !gameOver && !thinking) {
+      initEngine().then(() => requestHint());
+    }
+  } else {
+    clearHint();
+  }
+});
+
 document.getElementById('engineStrengthSelect').addEventListener('change', e => {
   const elo = parseInt(e.target.value, 10) || ENGINE_SETTINGS.elo;
   ENGINE_SETTINGS.elo = elo;
@@ -1211,6 +1640,16 @@ function loadSolPieces() {
 
 let solMoves = [];        // [{san, from, to, fen}]
 let solVisible = false;
+
+function toggleCreateForm() {
+  const form = document.getElementById('create-form');
+  const btn  = document.getElementById('createToggleBtn');
+  const open = form.style.display === 'none';
+  form.style.display = open ? 'block' : 'none';
+  btn.classList.toggle('open', open);
+  btn.textContent = open ? '✕ Close' : '✏ Create Flashcard';
+  if (open) setTimeout(() => form.querySelector('#nameInput').focus(), 50);
+}
 
 function toggleSolution() {
   solVisible = !solVisible;
