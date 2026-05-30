@@ -493,6 +493,27 @@
     gap: 12px;
     flex-wrap: wrap;
   }
+  .engine-strength-options {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .engine-strength-options label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface2);
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--text);
+  }
+  .engine-strength-options input {
+    accent-color: #79c0ff;
+  }
   .csv-row {
     display: flex;
     align-items: center;
@@ -530,14 +551,14 @@
 <div class="layout">
 
   <!-- ── ENGINE STRENGTH ── -->
-  <div class="engine-row">
-    <label class="field-label" style="margin:0; white-space:nowrap;">Engine Strength</label>
-    <select id="engineStrengthSelect" class="fen-input" style="max-width:160px; padding:8px 10px;">
-      <option value="2000">2000</option>
-      <option value="2500">2500</option>
-      <option value="2800">2800</option>
-      <option value="3200" selected>3200</option>
-    </select>
+  <div class="engine-row" id="engineStrengthRow">
+    <span class="field-label" style="margin:0; white-space:nowrap;">Engine Strength</span>
+    <div class="engine-strength-options">
+      <label><input type="radio" name="engineStrength" value="2000">2000</label>
+      <label><input type="radio" name="engineStrength" value="2500">2500</label>
+      <label><input type="radio" name="engineStrength" value="2800">2800</label>
+      <label><input type="radio" name="engineStrength" value="3200" checked>3200</label>
+    </div>
   </div>
 
   <!-- ── AI COACH API KEY ── -->
@@ -648,7 +669,7 @@
     <table id="fcTable" style="display:none">
       <thead>
         <tr>
-          <th>#</th><th>Name</th><th>Position</th>
+          <th>#</th><th>Name</th>
           <th>Result</th><th>Strength</th><th>Played</th><th></th>
         </tr>
       </thead>
@@ -1446,10 +1467,7 @@ async function practiceRandom() {
   const card = cards[Math.floor(Math.random() * cards.length)];
   await loadPosition(card.fen, card.id);
   renderTable(card.id);
-  setTimeout(() => {
-    const row = document.getElementById('row-' + card.id);
-    if (row) row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, 100);
+  document.getElementById('board-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 document.getElementById('practiceBtn').addEventListener('click', practiceRandom);
 
@@ -1459,6 +1477,7 @@ async function practiceCard(id) {
   if (!card) return;
   await loadPosition(card.fen, card.id);
   renderTable(id);
+  document.getElementById('board-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 window.practiceCard = practiceCard;
 
@@ -1485,7 +1504,6 @@ function renderTable(activeId = null) {
     <tr id="row-${c.id}" class="${activeId === c.id ? 'active-row' : ''}">
       <td style="color:#b0bec5;font-weight:600">${i + 1}</td>
       <td class="fen-cell" title="${c.name || 'Unnamed'}">${c.name || 'Unnamed'}${c.pgn ? ' <span style="color:#79c0ff;font-size:9px;vertical-align:middle" title="Has solution PGN">📋</span>' : ''}</td>
-      <td class="fen-cell" title="${c.fen}">${c.fen.split(' ')[0]}</td>
       <td>${badge(c.last_result)}</td>
       <td style="color:#c8d8e8;font-size:11px;white-space:nowrap">${c.last_strength || '—'}</td>
       <td style="color:#c8d8e8;font-size:11px;white-space:nowrap">${c.last_played}</td>
@@ -1615,17 +1633,19 @@ document.getElementById('useHintCheck').addEventListener('change', () => {
   }
 });
 
-document.getElementById('engineStrengthSelect').addEventListener('change', e => {
-  const elo = parseInt(e.target.value, 10) || ENGINE_SETTINGS.elo;
-  ENGINE_SETTINGS.elo = elo;
-  // Scale thinking time with ELO: weaker = less time (simpler play), stronger = more time
-  ENGINE_SETTINGS.movetime = elo >= 3200 ? 3000 : elo >= 2800 ? 2000 : elo >= 2500 ? 1200 : 600;
-  // Re-apply UCI_LimitStrength for the new ELO on next engine init
-  engineReady = false;
-  engineInitializing = null;
-  if (engine) { engine.terminate(); engine = null; }
-  setStatus(`Engine set to ${elo === 3200 ? 'full strength' : 'ELO ' + elo} — restarting…`);
-  setTimeout(() => initEngine().then(() => setStatus(`Engine ready at ${elo >= 3200 ? 'full strength' : 'ELO ' + elo}`)), 100);
+document.querySelectorAll('input[name="engineStrength"]').forEach(radio => {
+  radio.addEventListener('change', e => {
+    const elo = parseInt(e.target.value, 10) || ENGINE_SETTINGS.elo;
+    ENGINE_SETTINGS.elo = elo;
+    // Scale thinking time with ELO: weaker = less time (simpler play), stronger = more time
+    ENGINE_SETTINGS.movetime = elo >= 3200 ? 3000 : elo >= 2800 ? 2000 : elo >= 2500 ? 1200 : 600;
+    // Re-apply UCI_LimitStrength for the new ELO on next engine init
+    engineReady = false;
+    engineInitializing = null;
+    if (engine) { engine.terminate(); engine = null; }
+    setStatus(`Engine set to ${elo === 3200 ? 'full strength' : 'ELO ' + elo} — restarting…`);
+    setTimeout(() => initEngine().then(() => setStatus(`Engine ready at ${elo >= 3200 ? 'full strength' : 'ELO ' + elo}`)), 100);
+  });
 });
 
 // ── SOLUTION PANEL ────────────────────────────────────────────────────────────
