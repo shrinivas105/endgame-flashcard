@@ -105,12 +105,77 @@
   .btn-secondary{ background: var(--surface2); color: var(--text); }
   .btn-practice {
     background: linear-gradient(135deg, #c8a96e, #e8c87a);
-    color: #111; border: none; font-size: 13px; font-weight: 700;
-    padding: 12px 22px; border-radius: 9px; width: 100%;
-    letter-spacing: 0.06em; text-transform: uppercase;
+    color: #111; border: none; font-size: 12px; font-weight: 700;
+    padding: 10px 16px; border-radius: 9px; width: auto;
+    min-width: 170px; letter-spacing: 0.05em; text-transform: uppercase;
   }
   .btn-practice:hover { filter: brightness(1.08); }
-  .btn-upload  { background: rgba(126,184,201,0.12); color: var(--accent2); border-color: rgba(126,184,201,0.4); }
+  .top-action-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .engine-strength-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 210px;
+    flex: 0 0 auto;
+    align-items: flex-end;
+  }
+  .engine-strength-options {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .engine-strength-options label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface2);
+    cursor: pointer;
+    font-size: 10px;
+    color: var(--text);
+  }
+  .engine-strength-options input {
+    accent-color: #79c0ff;
+  }
+  .status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+  .hint-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .hint-inline input {
+    width: 16px; height: 16px;
+    accent-color: #56d364;
+  }
+  .status-row #status { flex: 1; min-width: 180px; }
+  #active-badge { display: none !important; }
+  .csv-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
   .btn-download{ background: rgba(76,175,125,0.10); color: var(--win); border-color: rgba(76,175,125,0.35); }
   .btn-ghost   { background: transparent; color: var(--muted); border-color: transparent; padding: 3px 7px; font-size: 12px; }
   .btn-ghost:hover { color: var(--loss); background: rgba(224,92,92,0.1); }
@@ -487,38 +552,37 @@
   }
 
   /* ── CLEAN LAYOUT ── */
-  .engine-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .engine-strength-options {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-  .engine-strength-options label {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 7px 10px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface2);
-    cursor: pointer;
-    font-size: 11px;
-    color: var(--text);
-  }
-  .engine-strength-options input {
-    accent-color: #79c0ff;
-  }
   .csv-row {
     display: flex;
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
+  }
+  @media (max-width: 700px) {
+    .top-action-row {
+      gap: 10px;
+    }
+    .engine-strength-box {
+      min-width: 160px;
+      width: 100%;
+      flex: 1 1 100%;
+      align-items: flex-start;
+    }
+    .engine-strength-options {
+      gap: 6px;
+    }
+    .engine-strength-options label {
+      padding: 5px 7px;
+      font-size: 9px;
+    }
+    .btn-practice {
+      min-width: unset;
+      width: 100%;
+      padding: 10px 14px;
+    }
+    .status-row {
+      gap: 8px;
+    }
   }
   #create-section { width: 100%; }
   .btn-create-toggle {
@@ -545,44 +609,21 @@
 
 <header>
   <h1>♟ Chess Endgame Trainer</h1>
-  <p>Build · Practice · Improve</p>
-</header>
 
 <div class="layout">
 
-  <!-- ── ENGINE STRENGTH ── -->
-  <div class="engine-row" id="engineStrengthRow">
-    <span class="field-label" style="margin:0; white-space:nowrap;">Engine Strength</span>
-    <div class="engine-strength-options">
-      <label><input type="radio" name="engineStrength" value="2000">2000</label>
-      <label><input type="radio" name="engineStrength" value="2500">2500</label>
-      <label><input type="radio" name="engineStrength" value="2800">2800</label>
-      <label><input type="radio" name="engineStrength" value="3200" checked>3200</label>
+  <div class="top-action-row">
+    <button class="btn btn-practice" id="practiceBtn">♟ Endgame Flashcard</button>
+    <div class="engine-strength-box">
+      <span class="field-label" style="margin:0;">Engine Strength</span>
+      <div class="engine-strength-options">
+        <label><input type="radio" name="engineStrength" value="2000">2000</label>
+        <label><input type="radio" name="engineStrength" value="2500">2500</label>
+        <label><input type="radio" name="engineStrength" value="2800">2800</label>
+        <label><input type="radio" name="engineStrength" value="3200" checked>3200</label>
+      </div>
     </div>
   </div>
-
-  <!-- ── AI COACH API KEY ── -->
-  <div class="ai-key-row">
-    <span class="ai-key-label">🤖 AI Coach</span>
-    <input class="ai-key-input" id="geminiKeyInput" type="password"
-      placeholder="Paste Gemini API key…" autocomplete="off">
-    <div class="ai-key-sub">
-      Free key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a> — explains every move in 2–3 sentences.
-    </div>
-  </div>
-
-  <!-- ── USE HINT TOGGLE ── -->
-  <div class="hint-toggle-row">
-    <label class="hint-toggle-label">
-      <input type="checkbox" id="useHintCheck">
-      <span class="hint-toggle-text">Use Hint</span>
-      <span class="hint-toggle-sub">Shows eval &amp; top 3 engine moves on board</span>
-    </label>
-    <div id="evalDisplay" style="display:none"></div>
-  </div>
-
-  <!-- ── FLASHCARD BUTTON ── -->
-  <button class="btn btn-practice" id="practiceBtn">♟ Endgame Flashcard</button>
 
   <!-- ── BOARD ── -->
   <div id="board-wrap">
@@ -598,8 +639,15 @@
         </div>
       </div>
     </div>
-    <div id="status">Press Endgame Flashcard to start practising</div>
-    <div id="active-badge"></div>
+    <div class="status-row">
+      <div id="status">Press Endgame Flashcard to start practising</div>
+      <label class="hint-inline">
+        <input type="checkbox" id="useHintCheck">
+        <span>Hint</span>
+      </label>
+      <div id="evalDisplay" style="display:none"></div>
+    </div>
+    <div id="active-badge" style="display:none;"></div>
   </div>
 
   <!-- ── AI MOVE EXPLANATION ── -->
@@ -669,12 +717,21 @@
     <table id="fcTable" style="display:none">
       <thead>
         <tr>
-          <th>#</th><th>Name</th>
+          <th>#</th><th>Name</th><th></th>
           <th>Result</th><th>Strength</th><th>Played</th><th></th>
         </tr>
       </thead>
       <tbody id="fcTbody"></tbody>
     </table>
+  </div>
+
+  <div class="ai-key-row">
+    <span class="ai-key-label">🤖 AI Coach</span>
+    <input class="ai-key-input" id="geminiKeyInput" type="password"
+      placeholder="Paste Gemini API key…" autocomplete="off">
+    <div class="ai-key-sub">
+      Free key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a> — explains every move in 2–3 sentences.
+    </div>
   </div>
 
 </div>
@@ -1504,12 +1561,14 @@ function renderTable(activeId = null) {
     <tr id="row-${c.id}" class="${activeId === c.id ? 'active-row' : ''}">
       <td style="color:#b0bec5;font-weight:600">${i + 1}</td>
       <td class="fen-cell" title="${c.name || 'Unnamed'}">${c.name || 'Unnamed'}${c.pgn ? ' <span style="color:#79c0ff;font-size:9px;vertical-align:middle" title="Has solution PGN">📋</span>' : ''}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost" title="Practice" onclick="practiceCard('${c.id}')">▶</button>
+      </td>
       <td>${badge(c.last_result)}</td>
       <td style="color:#c8d8e8;font-size:11px;white-space:nowrap">${c.last_strength || '—'}</td>
       <td style="color:#c8d8e8;font-size:11px;white-space:nowrap">${c.last_played}</td>
       <td style="white-space:nowrap">
-        <button class="btn btn-ghost" title="Practice" onclick="practiceCard('${c.id}')">▶</button>
-        <button class="btn btn-ghost" title="Delete"   onclick="deleteCard('${c.id}')">✕</button>
+        <button class="btn btn-ghost" title="Delete" onclick="deleteCard('${c.id}')">✕</button>
       </td>
     </tr>`).join('');
 }
