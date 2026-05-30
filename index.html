@@ -585,6 +585,16 @@
     .status-row {
       gap: 8px;
     }
+    /* Expand board to use the full viewport horizontal space by
+       compensating for body/layout side padding on mobile. This
+       reduces the empty margins left/right so the chessboard can
+       occupy more horizontal real estate. */
+    #board-container {
+      width: calc(100% + 28px);
+      margin-left: -14px;
+      margin-right: -14px;
+      border-radius: 6px;
+    }
   }
   #create-section { width: 100%; }
   .btn-create-toggle {
@@ -893,8 +903,8 @@ function resizeCanvas() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
-// Board colors: light = white, dark = green; selection highlight subtle green
-const LIGHT = '#ffffff', DARK = '#2e7d32', SEL = 'rgba(46,125,50,0.38)';
+// Board colors: light = white, dark = green; selection highlight now black
+const LIGHT = '#ffffff', DARK = '#2e7d32', SEL = 'rgba(0,0,0,0.6)';
 
 let chess = null, playerColor = 'w', thinking = false, gameOver = false;
 let startFen = '', dragging = null, selectedSquare = null, currentCardId = null;
