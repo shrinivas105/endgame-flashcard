@@ -654,9 +654,18 @@
         <input type="checkbox" id="useHintCheck">
         <span>Hint</span>
       </label>
+      <label class="hint-inline" style="margin-left:8px; gap:8px; align-items:center;">
+        <span style="font-size:11px; color:var(--muted); margin-right:6px;">Mode</span>
+        <label style="display:inline-flex; align-items:center; gap:6px;">
+          <input type="radio" name="hintMode" value="hint" checked> Hint
+        </label>
+        <label style="display:inline-flex; align-items:center; gap:6px; margin-left:6px;">
+          <input type="radio" name="hintMode" value="hint+ai"> Hint + AI
+        </label>
+      </label>
       <div id="evalDisplay" style="display:none"></div>
-    </div>
-    <div id="active-badge" style="display:none;"></div>
+      </div>
+      <div id="active-badge" style="display:none;"></div>
   </div>
 
   <!-- ── AI MOVE EXPLANATION ── -->
@@ -796,14 +805,11 @@ async function fetchMoveExplanation(fenBefore, san, movingColor, isEngine, fromS
   content.innerHTML = `<div class="ai-explain-loading"><div class="ai-spinner"></div><span>Analysing ${san}…</span></div>`;
 
   const prompt =
-    `You are a grandmaster-level chess endgame coach. ` +
+    `You are a concise grandmaster-level chess endgame coach. ` +
     `FEN (rank 8 to rank 1, a-h left to right, uppercase=White, lowercase=Black): "${fenBefore}". ` +
     `It is ${side}'s turn. Best move: ${san} (${fromSq} → ${toSq}). ` +
-    `Respond in exactly this format with no deviation:\n\n` +
-    `**Explanation**\n` +
-    `[3-4 sentences. What the move does concretely, the endgame technique or principle involved, why it is the best move. Name squares, pieces, threats. Do not cut off mid-sentence.]\n\n` +
-    `**How to proceed from here**\n` +
-    `[A concrete 3-4 step plan for the next moves. Each step on a new line starting with a number. For each step say what to do AND why — e.g. what threat it creates, what weakness it exploits, what principle it follows. Be specific with square names and piece names.]`;
+    `Provide a short explanation in 2-3 sentences describing what the move does, the key idea or endgame principle, and the concrete reason it is stronger than alternatives. ` +
+    `Do NOT include a multi-step plan — only the concise explanation. Keep language compact and avoid unnecessary wording.`;
 
   try {
     const resp = await fetch(
@@ -813,7 +819,7 @@ async function fetchMoveExplanation(fenBefore, san, movingColor, isEngine, fromS
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.5, maxOutputTokens: 8192 }
+          generationConfig: { temperature: 0.2, maxOutputTokens: 300 }
         })
       }
     );
@@ -1175,6 +1181,8 @@ function groqRateLimitOk() {
 }
 
 function hintAiCallback({ topMove, fen }) {
+  // Only request AI explanation when user selected Hint + AI
+  if (!isAiEnabled()) return;
   if (!geminiKey || !groqRateLimitOk()) return;
   const tempChess = new Chess();
   tempChess.load(fen);
@@ -1319,7 +1327,7 @@ async function doEngineMove(showAiHint = false) {
     // After engine plays, show hint for player's new position
     if (!gameOver && !chess.game_over()) {
       await initEngine();
-      if (showAiHint) {
+      if (showAiHint && isAiEnabled()) {
         // Player just moved — explain the top hint move via AI (rate-limited)
         requestHint(hintAiCallback);
       } else {
@@ -1543,7 +1551,12 @@ async function loadPosition(fen, cardId = null) {
   }
   document.getElementById('result-overlay').classList.remove('show');
   draw(); checkEnd();
-  if (document.getElementById('useHintCheck').checked) initEngine().then(() => requestHint(hintAiCallback));
+  if (isHintEnabled()) {
+    initEngine().then(() => {
+      if (isAiEnabled()) requestHint(hintAiCallback);
+      else requestHint();
+    });
+  }
 
   // Build solution panel from card's PGN
   const card = cardId ? getCards().find(c => c.id === cardId) : null;
@@ -1560,9 +1573,47 @@ document.getElementById('ovRetry').addEventListener('click', () => {
   gameOver = false; thinking = false; selectedSquare = null; dragging = null;
   document.getElementById('result-overlay').classList.remove('show');
   draw(); checkEnd();
-  if (document.getElementById('useHintCheck').checked) initEngine().then(() => requestHint(hintAiCallback));
+  if (isHintEnabled()) {
+    initEngine().then(() => {
+      if (isAiEnabled()) requestHint(hintAiCallback);
+      else requestHint();
+    });
+  }
 });
 document.getElementById('ovNext').addEventListener('click', practiceRandom);
+
+// Hint / AI helpers
+function isHintEnabled() {
+  const el = document.getElementById('useHintCheck');
+  return !!(el && el.checked);
+}
+function getHintMode() {
+  const r = document.querySelector('input[name="hintMode"]:checked');
+  return r ? r.value : 'hint';
+}
+function isAiEnabled() {
+  return isHintEnabled() && getHintMode() === 'hint+ai';
+}
+
+// Enable/disable mode radios depending on Hint checkbox and hide AI panel when mode off
+const hintCheckbox = document.getElementById('useHintCheck');
+const hintRadios = Array.from(document.querySelectorAll('input[name="hintMode"]'));
+function updateHintModeState() {
+  const enabled = hintCheckbox && hintCheckbox.checked;
+  hintRadios.forEach(r => r.disabled = !enabled);
+  if (!enabled || !isAiEnabled()) document.getElementById('ai-explain-wrap').classList.remove('visible');
+}
+if (hintCheckbox) {
+  hintCheckbox.addEventListener('change', updateHintModeState);
+  updateHintModeState();
+}
+hintRadios.forEach(r => r.addEventListener('change', () => {
+  if (!isAiEnabled()) document.getElementById('ai-explain-wrap').classList.remove('visible');
+  // If user enables Hint+AI while a position is active, request AI explanation now
+  if (isAiEnabled() && chess && !chess.game_over() && !gameOver && !thinking) {
+    initEngine().then(() => requestHint(hintAiCallback));
+  }
+}));
 
 // ── LOCAL STORAGE ─────────────────────────────────────────────────────────────
 const LS_KEY = 'chessEndgameFlashcards';
@@ -1790,7 +1841,10 @@ function showToast(msg) {
 document.getElementById('useHintCheck').addEventListener('change', () => {
   if (document.getElementById('useHintCheck').checked) {
     if (chess && !chess.game_over() && !gameOver && !thinking) {
-      initEngine().then(() => requestHint(hintAiCallback));
+      initEngine().then(() => {
+        if (isAiEnabled()) requestHint(hintAiCallback);
+        else requestHint();
+      });
     }
   } else {
     clearHint();
