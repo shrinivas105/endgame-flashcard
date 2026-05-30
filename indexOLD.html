@@ -544,9 +544,9 @@
   <div class="ai-key-row">
     <span class="ai-key-label">🤖 AI Coach</span>
     <input class="ai-key-input" id="geminiKeyInput" type="password"
-      placeholder="Paste Gemini API key…" autocomplete="off">
+      placeholder="Paste OpenRouter API key…" autocomplete="off">
     <div class="ai-key-sub">
-      Free key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com</a> — explains every move in 2–3 sentences.
+      Free key at <a href="https://openrouter.ai/settings/keys" target="_blank">openrouter.ai</a> — explains every move in 2–3 sentences.
     </div>
   </div>
 
@@ -679,7 +679,7 @@ const PIECE_IMAGES = {
 };
 
 // ── GROQ AI COACH ────────────────────────────────────────────────────────────
-const GEMINI_LS_KEY = 'chessGeminiKey';
+const GEMINI_LS_KEY = 'chessOpenRouterKey';
 let geminiKey = localStorage.getItem(GEMINI_LS_KEY) || '';
 
 function initGeminiKeyInput() {
@@ -712,21 +712,27 @@ async function fetchMoveExplanation(fenBefore, san, movingColor, isEngine, fromS
     `You are a grandmaster-level chess endgame coach. ` +
     `FEN (rank 8 to rank 1, a-h left to right, uppercase=White, lowercase=Black): "${fenBefore}". ` +
     `It is ${side}'s turn. Best move: ${san} (${fromSq} → ${toSq}). ` +
-    `Respond in exactly this format with no deviation:\n\n` +
-    `**Explanation**\n` +
-    `[3-4 sentences. What the move does concretely, the endgame technique or principle involved, why it is the best move. Name squares, pieces, threats. Do not cut off mid-sentence.]\n\n` +
-    `**How to proceed from here**\n` +
-    `[A concrete 3-4 step plan for the next moves. Each step on a new line starting with a number. For each step say what to do AND why — e.g. what threat it creates, what weakness it exploits, what principle it follows. Be specific with square names and piece names.]`;
+    `\n\nRespond in this exact format:` +
+    `\n**Technique:** [name the specific endgame technique or rule — e.g. Opposition, Lucena, Philidor, Triangulation, Outflanking, Rule of the Square, Rook behind passed pawn, Cutting off the king, Shouldering, Zugzwang, Key squares, Pawn breakthrough, etc.]` +
+    `\n**Why:** [1-2 sentences — what does this move achieve concretely? Name the square, piece, or resulting structure. No filler.]` +
+    `\n**Rule:** [State the underlying endgame principle or rule of thumb a student should remember — e.g. "In K+P endings, the attacking king must reach the key squares in front of the pawn."]`;
 
   try {
     const resp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiKey}`,
+      `https://openrouter.ai/api/v1/chat/completions`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${geminiKey}`,
+            'HTTP-Referer': 'https://chess-endgame-trainer',
+            'X-Title': 'Chess Endgame Trainer'
+        },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.5, maxOutputTokens: 8192 }
+          model: 'openai/gpt-oss-120b:free',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 300,
+          temperature: 0.5
         })
       }
     );
@@ -735,17 +741,13 @@ async function fetchMoveExplanation(fenBefore, san, movingColor, isEngine, fromS
       content.innerHTML = `<div class="ai-explain-text" style="color:#ff7b72;font-style:normal">⚠ ${data.error.message || 'API error'}</div>`;
       return;
     }
-    const candidate = data.candidates?.[0];
-    const finishReason = candidate?.finishReason || 'UNKNOWN';
-    let text = candidate?.content?.parts?.[0]?.text?.trim() || '';
-    if (finishReason !== 'STOP' && finishReason !== 'UNKNOWN') {
-      text += '\n\n⚠ Response cut off (reason: ' + finishReason + '). Try again.';
-    }
+    let text = data.choices?.[0]?.message?.content?.trim() || '';
+    // DeepSeek R1 wraps reasoning in <think>...</think> — strip it
+    text = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
     if (text) {
       const rendered = text
-        .replace(/\*\*([^*]+)\*\*/g, '<strong style="color:#79c0ff;font-size:0.85em;text-transform:uppercase;letter-spacing:0.05em">$1</strong>')
-        .replace(/\n(\d+)\. /g, '<br><span style="color:#79c0ff;font-weight:600">$1.</span> ')
-        .replace(/\n/g, '<br>');
+        .replace(/\n/g, '<br>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#f0f6fc">$1</strong>');
       content.innerHTML = `<div class="ai-explain-text">${rendered}</div>`;
     } else {
       content.innerHTML = `<div class="ai-explain-text" style="color:#b0bec5">No explanation returned.</div>`;
