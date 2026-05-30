@@ -1524,7 +1524,6 @@ async function practiceRandom() {
   const card = cards[Math.floor(Math.random() * cards.length)];
   await loadPosition(card.fen, card.id);
   renderTable(card.id);
-  document.getElementById('board-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 document.getElementById('practiceBtn').addEventListener('click', practiceRandom);
 
@@ -1534,7 +1533,6 @@ async function practiceCard(id) {
   if (!card) return;
   await loadPosition(card.fen, card.id);
   renderTable(id);
-  document.getElementById('board-wrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 window.practiceCard = practiceCard;
 
