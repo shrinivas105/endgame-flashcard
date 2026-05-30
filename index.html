@@ -894,7 +894,7 @@ function resizeCanvas() {
 }
 
 // Board colors: light = white, dark = green; selection highlight subtle green
-const LIGHT = '#ffffff', DARK = '#2e7d32', SEL = 'rgba(46,125,50,0.22)';
+const LIGHT = '#ffffff', DARK = '#2e7d32', SEL = 'rgba(46,125,50,0.38)';
 
 let chess = null, playerColor = 'w', thinking = false, gameOver = false;
 let startFen = '', dragging = null, selectedSquare = null, currentCardId = null;
@@ -1411,10 +1411,48 @@ function endDrag(e) {
 
 // Click / tap-to-move support (point-and-click in addition to drag-and-drop)
 canvas.addEventListener('click', handleCanvasClick);
-canvas.addEventListener('touchend', e => {
-  if (dragging) return;
-  e.preventDefault();
-  handleTouchTap(e);
+
+// Improved touch handling: detect tap vs drag. Touchstart records start, touchmove
+// starts dragging when movement exceeds a small threshold, touchend treats
+// short non-movement touches as taps.
+let touchInfo = null; // { startX, startY, startTime, moved }
+
+canvas.addEventListener('touchstart', (e) => {
+  if (!e.touches || e.touches.length !== 1) return;
+  const t = e.touches[0];
+  touchInfo = { startX: t.clientX, startY: t.clientY, startTime: Date.now(), moved: false };
+}, { passive: true });
+
+window.addEventListener('touchmove', (e) => {
+  if (!touchInfo) return;
+  const t = e.touches[0];
+  const dx = t.clientX - touchInfo.startX, dy = t.clientY - touchInfo.startY;
+  if (!touchInfo.moved && Math.hypot(dx, dy) > 8) {
+    touchInfo.moved = true;
+    // start dragging programmatically
+    startDrag({ touches: [t], clientX: t.clientX, clientY: t.clientY });
+  }
+  if (dragging) {
+    e.preventDefault();
+    moveDrag({ touches: [t], clientX: t.clientX, clientY: t.clientY });
+  }
+}, { passive: false });
+
+window.addEventListener('touchend', (e) => {
+  if (!touchInfo) return;
+  const t = e.changedTouches[0];
+  const dt = Date.now() - touchInfo.startTime;
+  if (dragging) {
+    e.preventDefault();
+    endDrag({ changedTouches: e.changedTouches, clientX: t.clientX, clientY: t.clientY });
+  } else {
+    // treat as tap if not moved and reasonably quick
+    if (!touchInfo.moved && dt < 500) {
+      e.preventDefault();
+      handleTouchTap({ changedTouches: e.changedTouches, clientX: t.clientX, clientY: t.clientY });
+    }
+  }
+  touchInfo = null;
 }, { passive: false });
 
 function handleCanvasClick(e) {
@@ -1463,7 +1501,6 @@ function handleCanvasClick(e) {
 function handleTouchTap(e) {
   const touch = e.changedTouches && e.changedTouches[0];
   if (!touch) return;
-  // Create a minimal event-like object for getPos()
   const fake = { touches: [touch], clientX: touch.clientX, clientY: touch.clientY };
   handleCanvasClick(fake);
 }
