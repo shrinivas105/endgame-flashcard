@@ -893,8 +893,7 @@ function resizeCanvas() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
-// Board colors: light = white, dark = green; selection highlight subtle green
-const LIGHT = '#ffffff', DARK = '#2e7d32', SEL = 'rgba(46,125,50,0.22)';
+const LIGHT = '#f0ede0', DARK = '#9e9080', SEL = 'rgba(200, 168, 75, 0.38)';
 
 let chess = null, playerColor = 'w', thinking = false, gameOver = false;
 let startFen = '', dragging = null, selectedSquare = null, currentCardId = null;
@@ -967,10 +966,9 @@ function draw() {
   for (let i = 0; i < 8; i++) {
     const rLabel = (playerColor === 'w' ? 8 - i : i + 1).toString();
     const fLabel = String.fromCharCode(playerColor === 'w' ? 97 + i : 97 + 7 - i);
-    // Dark squares use green label, light squares use white label for contrast
-    ctx.fillStyle = i % 2 === 0 ? '#2e7d32' : '#ffffff';
+    ctx.fillStyle = i % 2 === 0 ? '#9e9080' : '#f0ede0';
     ctx.fillText(rLabel, 3, i * SQ + 14);
-    ctx.fillStyle = i % 2 === 0 ? '#ffffff' : '#2e7d32';
+    ctx.fillStyle = i % 2 === 0 ? '#f0ede0' : '#9e9080';
     ctx.fillText(fLabel, i * SQ + SQ - 11, SIZE - 3);
   }
 
@@ -1407,65 +1405,6 @@ function endDrag(e) {
   }
   selectedSquare = (toSq === fromSq && selectedSquare !== fromSq) ? fromSq : null;
   draw();
-}
-
-// Click / tap-to-move support (point-and-click in addition to drag-and-drop)
-canvas.addEventListener('click', handleCanvasClick);
-canvas.addEventListener('touchend', e => {
-  if (dragging) return;
-  e.preventDefault();
-  handleTouchTap(e);
-}, { passive: false });
-
-function handleCanvasClick(e) {
-  if (!chess || dragging || thinking || gameOver) return;
-  const { px, py } = getPos(e);
-  const sq = xyToSq(px, py);
-  if (!sq) return;
-
-  const fi = sq.charCodeAt(0) - 97, ri = parseInt(sq[1]) - 1;
-  const piece = chess.board()[7 - ri][fi];
-
-  // If nothing selected yet, select piece on this square (if player's piece)
-  if (!selectedSquare) {
-    if (piece && piece.color === playerColor) {
-      selectedSquare = sq;
-      draw();
-    }
-    return;
-  }
-
-  // Clicking same square -> deselect
-  if (selectedSquare === sq) {
-    selectedSquare = null; draw(); return;
-  }
-
-  // Attempt move from selectedSquare to clicked square
-  const move = chess.move({ from: selectedSquare, to: sq, promotion: 'q' });
-  if (move) {
-    lastMove = { from: selectedSquare, to: sq };
-    clearHint();
-    selectedSquare = null;
-    draw();
-    if (!chess.game_over()) doEngineMove(true);
-    else checkEnd();
-    return;
-  }
-
-  // If move invalid, but clicked another own piece -> switch selection
-  if (piece && piece.color === playerColor) {
-    selectedSquare = sq; draw();
-  } else {
-    selectedSquare = null; draw();
-  }
-}
-
-function handleTouchTap(e) {
-  const touch = e.changedTouches && e.changedTouches[0];
-  if (!touch) return;
-  // Create a minimal event-like object for getPos()
-  const fake = { touches: [touch], clientX: touch.clientX, clientY: touch.clientY };
-  handleCanvasClick(fake);
 }
 
 // ── RESPONSIVE RESIZE ────────────────────────────────────────────────────────
