@@ -903,8 +903,8 @@ function resizeCanvas() {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
-// Board colors: light = white, dark = green; selection highlight now black
-const LIGHT = '#ffffff', DARK = '#2e7d32', SEL = 'rgba(0,0,0,0.6)';
+// Board colors: light = white, dark = light sky blue; selection highlight now black
+const LIGHT = '#ffffff', DARK = '#87CEEB', SEL = 'rgba(0,0,0,0.6)';
 
 let chess = null, playerColor = 'w', thinking = false, gameOver = false;
 let startFen = '', dragging = null, selectedSquare = null, currentCardId = null;
@@ -977,10 +977,10 @@ function draw() {
   for (let i = 0; i < 8; i++) {
     const rLabel = (playerColor === 'w' ? 8 - i : i + 1).toString();
     const fLabel = String.fromCharCode(playerColor === 'w' ? 97 + i : 97 + 7 - i);
-    // Dark squares use green label, light squares use white label for contrast
-    ctx.fillStyle = i % 2 === 0 ? '#2e7d32' : '#ffffff';
+    // Use color variables for labels to match board colors and maintain contrast
+    ctx.fillStyle = i % 2 === 0 ? DARK : LIGHT;
     ctx.fillText(rLabel, 3, i * SQ + 14);
-    ctx.fillStyle = i % 2 === 0 ? '#ffffff' : '#2e7d32';
+    ctx.fillStyle = i % 2 === 0 ? LIGHT : DARK;
     ctx.fillText(fLabel, i * SQ + SQ - 11, SIZE - 3);
   }
 
