@@ -105,9 +105,9 @@
   .btn-secondary{ background: var(--surface2); color: var(--text); }
   .btn-practice {
     background: linear-gradient(135deg, #c8a96e, #e8c87a);
-    color: #111; border: none; font-size: 12px; font-weight: 700;
-    padding: 10px 16px; border-radius: 9px; width: auto;
-    min-width: 170px; letter-spacing: 0.05em; text-transform: uppercase;
+    color: #111; border: none; font-size: 11px; font-weight: 700;
+    padding: 8px 14px; border-radius: 9px; width: auto;
+    min-width: 140px; letter-spacing: 0.04em; text-transform: uppercase;
   }
   .btn-practice:hover { filter: brightness(1.08); }
   .top-action-row {
@@ -136,13 +136,13 @@
   .engine-strength-options label {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    padding: 5px 8px;
+    gap: 4px;
+    padding: 4px 7px;
     border: 1px solid var(--border);
     border-radius: 8px;
     background: var(--surface2);
     cursor: pointer;
-    font-size: 10px;
+    font-size: 9px;
     color: var(--text);
   }
   .engine-strength-options input {
@@ -186,6 +186,20 @@
     letter-spacing: 0.04em; font-family: 'JetBrains Mono', monospace;
   }
   .btn-save-fen:hover { filter: brightness(1.1); }
+
+  .table-wrap th,
+  .table-wrap td {
+    text-align: left;
+  }
+  .table-wrap td.fen-cell {
+    text-align: left;
+  }
+  .active-row {
+    background: rgba(232, 223, 125, 0.24);
+  }
+  .active-row:hover {
+    background: rgba(232, 223, 125, 0.32);
+  }
 
   /* ── FEN INPUT ── */
   .fen-input {
@@ -589,9 +603,9 @@
     background: rgba(126,184,201,0.13);
     color: #79c0ff;
     border: 1px dashed rgba(121,192,255,0.5);
-    font-size: 13px; font-weight: 700;
-    padding: 11px 22px; border-radius: 9px; width: 100%;
-    letter-spacing: 0.05em; cursor: pointer;
+    font-size: 11px; font-weight: 700;
+    padding: 9px 16px; border-radius: 9px; width: 100%;
+    letter-spacing: 0.04em; cursor: pointer;
     transition: filter 0.15s, background 0.15s;
     font-family: 'Libre Baskerville', serif;
   }
