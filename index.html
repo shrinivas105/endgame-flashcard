@@ -544,9 +544,9 @@
   <div class="ai-key-row">
     <span class="ai-key-label">🤖 AI Coach</span>
     <input class="ai-key-input" id="geminiKeyInput" type="password"
-      placeholder="Paste Groq API key…" autocomplete="off">
+      placeholder="Paste OpenRouter API key…" autocomplete="off">
     <div class="ai-key-sub">
-      Free key at <a href="https://console.groq.com/" target="_blank">console.groq.com</a> — explains every move in 2–3 sentences.
+      Free key at <a href="https://openrouter.ai/settings/keys" target="_blank">openrouter.ai</a> — explains every move in 2–3 sentences.
     </div>
   </div>
 
@@ -679,7 +679,7 @@ const PIECE_IMAGES = {
 };
 
 // ── GROQ AI COACH ────────────────────────────────────────────────────────────
-const GEMINI_LS_KEY = 'chessGroqKey';
+const GEMINI_LS_KEY = 'chessOpenRouterKey';
 let geminiKey = localStorage.getItem(GEMINI_LS_KEY) || '';
 
 function initGeminiKeyInput() {
@@ -719,15 +719,17 @@ async function fetchMoveExplanation(fenBefore, san, movingColor, isEngine, fromS
 
   try {
     const resp = await fetch(
-      `https://api.groq.com/openai/v1/chat/completions`,
+      `https://openrouter.ai/api/v1/chat/completions`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${geminiKey}`
+          'Authorization': `Bearer ${geminiKey}`,
+            'HTTP-Referer': 'https://chess-endgame-trainer',
+            'X-Title': 'Chess Endgame Trainer'
         },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
+          model: 'openai/gpt-oss-120b:free',
           messages: [{ role: 'user', content: prompt }],
           max_tokens: 300,
           temperature: 0.5
@@ -739,7 +741,9 @@ async function fetchMoveExplanation(fenBefore, san, movingColor, isEngine, fromS
       content.innerHTML = `<div class="ai-explain-text" style="color:#ff7b72;font-style:normal">⚠ ${data.error.message || 'API error'}</div>`;
       return;
     }
-    const text = data.choices?.[0]?.message?.content?.trim() || '';
+    let text = data.choices?.[0]?.message?.content?.trim() || '';
+    // DeepSeek R1 wraps reasoning in <think>...</think> — strip it
+    text = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
     if (text) {
       const rendered = text
         .replace(/\n/g, '<br>')
@@ -1078,7 +1082,7 @@ let groqCallTimestamps = [];
 function groqRateLimitOk() {
   const now = Date.now();
   groqCallTimestamps = groqCallTimestamps.filter(t => now - t < 60000);
-  if (groqCallTimestamps.length >= 28) return false;  // stay safely under 30/min
+  if (groqCallTimestamps.length >= 18) return false;  // stay safely under 20/min free tier
   groqCallTimestamps.push(now);
   return true;
 }
